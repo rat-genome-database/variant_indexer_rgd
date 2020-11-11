@@ -1,0 +1,87 @@
+ SampleDAO sdao=new SampleDAO();
+                Variants variants=new Variants();
+                List<Integer> variantIds=  new ArrayList<>();
+                Map<Integer, VariantIndexObject> indexedMap= new HashMap<>();
+                String chr="1";
+                Map<Long, List<String>> geneLoci = getGeneLociMap(mapKey, chr);
+                sdao.setDataSource(DataSourceFactory.getInstance().getDataSource("Variant"));
+                List<Sample> samples=sdao.getSamplesByMapKey(mapKey);
+                System.out.println("GENE LOCI SIZE:"+ geneLoci.size()+"\tSAMPLES SIZE: "+ samples.size());
+              //  for(int sampleId:  Arrays.asList(603, 500)) {
+                for(Sample sample:samples){
+                    int sampleId=sample.getId();
+                    List<VariantData> records = variants.getVariants(3, chr, mapKey, sampleId);
+                    for(VariantData r: records){
+                        if(!variantIds.contains(r.getVariantRgdId())){
+                            variantIds.add(r.getVariantRgdId());
+                            VariantIndexObject indexObject=new VariantIndexObject();
+                            indexObject.setVariant(this.mapVariant(r));
+                            List<VariantSampleDetail> sampleDetails=new ArrayList<>();
+                            sampleDetails.add(this.mapSampleDetails(r));
+                            indexObject.setSamples(sampleDetails);
+                            List<VariantTranscript> vts= new ArrayList<>();
+                            vts.add(this.mapVariantTranscript(r));
+                            indexObject.setVariantTranscripts(vts);
+                            List<String> regionNames=geneLoci.get(r.getStartPos());
+                            if(regionNames!=null && regionNames.size()!=0) {
+                                indexObject.setRegionName(regionNames);
+                                List<String> regionNameLC = new ArrayList<>();
+                                for (String name : regionNames) {
+                                    regionNameLC.add(name.toLowerCase());
+                                }
+                                indexObject.setRegionNameLc(regionNameLC);
+                            }
+                            indexedMap.put(r.getVariantRgdId(), indexObject);
+                        }else{
+                            VariantIndexObject indexObject=indexedMap.get(r.getVariantRgdId());
+                            /**************add sample*************************/
+
+                            List<VariantSampleDetail> sampleDetails= new ArrayList<>();
+                            sampleDetails=indexObject.getSamples();
+                            if(sampleDetails==null){
+                                sampleDetails=new ArrayList<>();
+                            }else {
+                                boolean existsSample = false;
+                                for (VariantSampleDetail s : sampleDetails) {
+                                    if (s.getSampleId() == r.getSampleId()) {
+                                        existsSample = true;
+                                    }
+                                }
+                                if (!existsSample) {
+                                    sampleDetails.add(this.mapSampleDetails(r));
+                                    indexObject.setSamples(sampleDetails);
+
+                                }
+                            }
+                                /*********************add VARIANT TRANSCRIPTS*****************/
+                               List<VariantTranscript> vts= new ArrayList<>();
+                               vts=indexObject.getVariantTranscripts();
+                               if(vts==null || vts.size()==0){
+                                   vts=new ArrayList<>();
+                               }else{
+                                   boolean existsTranscript=false;
+                                   for(VariantTranscript vt:vts){
+                                       if(vt.getTranscriptRgdId()==r.getTranscriptRgdId()){
+                                           existsTranscript=true;
+                                       }
+                                   }
+                                   if(!existsTranscript){
+                                       VariantTranscript vt=this.mapVariantTranscript(r);
+                                       vts.add(vt);
+                                       indexObject.setVariantTranscripts(vts);
+
+                                   }
+                                   indexedMap.put(r.getVariantRgdId(), indexObject);
+                               }
+
+
+                        }
+
+
+                    }
+                    System.out.println("SAMPLE: "+ sampleId+"RECORDS SIZE: " + records.size());
+                }
+                System.out.println("CHROMOSOME: "+ chr+ "INDEX OBJECTS MAP SIZE: " + indexedMap.size());
+                ExecutorService executor= new MyThreadPoolExecutor(10,10,0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+                Runnable workerThread=new RatIndexer(indexedMap,chr,"\""+indexedMap.size()+"\"" );
+                executor.execute(workerThread);

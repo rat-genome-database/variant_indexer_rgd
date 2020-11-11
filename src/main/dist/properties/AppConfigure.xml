@@ -1,0 +1,26 @@
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+    <bean id="manager" class="edu.mcw.rgd.variantIndexerRgd.Manager">
+        <property name="version" value="Variant Indexer v.0.1.0 Nov 14, 2019"/>
+        <property name="rgdIndex" ref="rgdIndex"/>
+        <property name="admin" ref="admin"/>
+        <property name="environments">
+
+            <list>
+                <value>dev</value>
+                <value>test</value>
+                <value>cur</value>
+                <value>prod</value>
+                <value>agr</value>
+                <value>someName</value>
+            </list>
+        </property>
+       </bean>
+    <bean id="rgdIndex" class="edu.mcw.rgd.variantIndexerRgd.model.RgdIndex"/>
+    <bean id="admin" class="edu.mcw.rgd.variantIndexerRgd.service.IndexAdmin">
+        <property name="rgdIndex" ref="rgdIndex"/>
+    </bean>
+
+    <bean id="client" class="edu.mcw.rgd.variantIndexerRgd.service.ESClient" init-method="init" destroy-method="destroy"/>
+    <bean id="bulkProcessor" class="edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor" init-method="init" destroy-method="destroy"> </bean>
+</beans>
