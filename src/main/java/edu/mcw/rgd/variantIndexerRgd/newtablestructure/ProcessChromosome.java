@@ -79,7 +79,9 @@ public class ProcessChromosome implements Runnable {
                             mapRegion(vmd, vi, geneLociMap);
                         }
                     }
-                            indexList.add(vi);
+                    Runnable workerThread=new MapSamplesAndIndex(vmd,vi);
+                    executor.execute(workerThread);
+                         /*   indexList.add(vi);
                             if(indexList.size()>=1000){
                                  //   Runnable workerThread=new MapSamplesAndIndex(vmd,vi)
                                     Runnable workerThread=new MapSamplesAndIndex(indexList,variantIds);
@@ -88,17 +90,19 @@ public class ProcessChromosome implements Runnable {
                                     indexList=new ArrayList<>();
 
                                 }
-
-                         /*   List<VariantSampleDetail> samples = dao.getSamples(vmd.getId());
+*/
+                       /*  List<VariantSampleDetail> samples = dao.getSamples(vmd.getId());
                             for (VariantSampleDetail vsd : samples) {
                                 if (vi != null) {
                                     mapSampleDetails(vsd, vi);
 
                                 try {
                                 //    System.out.println(vi.toString());
-                              //    bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON));
-                                 IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
-                                    ESClient.getClient().index(request, RequestOptions.DEFAULT);
+                                    ObjectMapper mapper=new ObjectMapper();
+                                    String json =  mapper.writeValueAsString(vi);
+                                 BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                                // IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
+                                //    ESClient.getClient().index(request, RequestOptions.DEFAULT);
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
@@ -108,12 +112,12 @@ public class ProcessChromosome implements Runnable {
                         count++;
 
                         }
-            if(indexList.size()>0) {
+         /* if(indexList.size()>0) {
                 Runnable workerThread = new MapSamplesAndIndex(indexList, variantIds);
                 executor.execute(workerThread);
                 variantIds = new HashSet<>();
                 indexList = new ArrayList<>();
-            }
+            }*/
             executor.shutdown();
             while (!executor.isTerminated()) {}
         } catch (Exception e) {

@@ -91,8 +91,8 @@ public class Manager {
        Manager manager= (Manager) bf.getBean("manager");
 
        log.info(manager.version);
-        ESClient es= (ESClient) bf.getBean("client");
-        BulkIndexProcessor bulkIndexProcessor= (BulkIndexProcessor) bf.getBean("bulkProcessor");
+      //  ESClient es= (ESClient) bf.getBean("client");
+     //   BulkIndexProcessor bulkIndexProcessor= (BulkIndexProcessor) bf.getBean("bulkProcessor");
        manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
       try{
 
@@ -140,14 +140,13 @@ public class Manager {
 
 
         }catch (Exception e){
-          BulkIndexProcessor.destroy();
-          if(es!=null)
-                ESClient.destroy();
+
+    //     BulkIndexProcessor.destroy();
+          ESClient.destroy();
             e.printStackTrace();
         }
-        if(es!=null)
-            ESClient.destroy();
-        BulkIndexProcessor.destroy();
+        ESClient.destroy();
+   //    BulkIndexProcessor.destroy();
 
     }
 

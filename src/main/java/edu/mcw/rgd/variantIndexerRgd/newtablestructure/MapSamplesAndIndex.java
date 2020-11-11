@@ -1,5 +1,6 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
@@ -21,7 +22,7 @@ public class MapSamplesAndIndex implements Runnable {
     ProcessChromosome p=new ProcessChromosome();
     VariantDao dao=new VariantDao();
 
-    public MapSamplesAndIndex(List<VariantIndex> indexList, Set<Long> variantIds){
+ /*   public MapSamplesAndIndex(List<VariantIndex> indexList, Set<Long> variantIds){
     this.indexList=indexList;
     this.variantIds=variantIds;
     }
@@ -29,7 +30,7 @@ public class MapSamplesAndIndex implements Runnable {
     @Override
     public void run() {
 
-        List<VariantSampleDetail> samples = null;
+    /*    List<VariantSampleDetail> samples = null;
         try {
             samples = dao.getSamples(variantIds);
         } catch (Exception e) {
@@ -44,10 +45,12 @@ public class MapSamplesAndIndex implements Runnable {
 
                             p. mapSampleDetails(vsd, vi);
                             try {
-                         //   BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON));
-                                IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
-                                ESClient.getClient().index(request, RequestOptions.DEFAULT);
-                            } catch (Exception e) {
+                                ObjectMapper mapper=new ObjectMapper();
+                                String json =  mapper.writeValueAsString(vi);
+                                BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                              /*  IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
+                                ESClient.getClient().index(request, RequestOptions.DEFAULT);*/
+                          /*  } catch (Exception e) {
                                 System.err.println(vi.toString());
                                 e.printStackTrace();
                             }
@@ -58,10 +61,10 @@ public class MapSamplesAndIndex implements Runnable {
 
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
 
-    }
-   /* public MapSamplesAndIndex(VariantObject vmd, VariantIndex vi){
+  //  }*/
+    public MapSamplesAndIndex(VariantObject vmd, VariantIndex vi){
         this.vmd=vmd;
         this.vi=vi;
     }
@@ -89,5 +92,5 @@ public class MapSamplesAndIndex implements Runnable {
                 }
             }
         }
-    }*/
+    }
 }
