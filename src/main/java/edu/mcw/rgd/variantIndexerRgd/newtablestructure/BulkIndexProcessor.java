@@ -13,7 +13,7 @@ import org.elasticsearch.common.unit.TimeValue;
 import java.util.concurrent.TimeUnit;
 
 public class BulkIndexProcessor {
-    private static BulkProcessor bulkProcessor=null;
+    public static BulkProcessor bulkProcessor=null;
     public static BulkProcessor getBulkProcessor(){
         if(bulkProcessor==null){
             init();
@@ -22,6 +22,7 @@ public class BulkIndexProcessor {
     }
     public static void init() {
         if (bulkProcessor == null) {
+            System.out.println("CREATING NEW BULK PROCESSOR....");
             BulkProcessor.Listener listener = new BulkProcessor.Listener() {
                 @Override
                 public void beforeBulk(long executionId, BulkRequest request) {
@@ -57,10 +58,12 @@ public class BulkIndexProcessor {
     public static void destroy(){
         try {
             bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
+            if(bulkProcessor!=null)
             bulkProcessor.close();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }finally {
+            if(bulkProcessor!=null)
             bulkProcessor.close();
         }
     }

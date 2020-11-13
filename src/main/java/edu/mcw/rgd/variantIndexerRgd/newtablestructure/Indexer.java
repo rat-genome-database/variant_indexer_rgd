@@ -140,8 +140,8 @@ public class Indexer implements Runnable{
        // v.setHGVSNAME();
         v.setRsId(vd.getRsId());
         v.setClinvarId(vd.getClinvarId());
-        List<BigDecimal> conScores= new ArrayList<>();
-        conScores.add(vd.getConservationScore());
+        List<String> conScores= new ArrayList<>();
+        conScores.add(String.valueOf(vd.getConservationScore()));
         if(conScores.size()>0)
         v.setConScores(conScores);
         v.setRegionName(getRegionNames(vd.getStartPos()));

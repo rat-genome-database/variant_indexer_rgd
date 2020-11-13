@@ -172,14 +172,21 @@ public class VariantHumanIndexer implements Runnable {
 
 
                     List<VariantTranscript> variantTranscripts = new ArrayList<>();
-                    List<BigDecimal> conScores = new ArrayList<>();
+                    List<String> conScores = new ArrayList<>();
                     try {
                         variantTranscripts.addAll(loader.getVariantTranscripts(pos, chr,v[3],allele ));
                         if (conScoresMap.get(pos) != null) {
-                            conScores.addAll(conScoresMap.get(pos));
+                            for(BigDecimal d:conScoresMap.get(pos)){
+                                conScores.add(String.valueOf(d));
+                            }
+                       //     conScores.addAll(conScoresMap.get(pos));
                         } else {
-                            conScores.addAll(loader.getConservationScores(chr, pos));
-                            conScoresMap.put(pos, conScores);
+                            List<BigDecimal> scores=loader.getConservationScores(chr, pos);
+                            for(BigDecimal d:scores){
+                                conScores.add(String.valueOf(d));
+                            }
+
+                            conScoresMap.put(pos, scores);
                         }
 
                     } catch (Exception e) {

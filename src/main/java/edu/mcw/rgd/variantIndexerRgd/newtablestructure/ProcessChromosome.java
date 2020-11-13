@@ -60,7 +60,6 @@ public class ProcessChromosome implements Runnable {
         List<VariantIndex> indexList=new ArrayList<>();
         try {
             System.out.println("Variants of CHR-"+ chr+":" +vmdList.size() );
-            int count=0;
             ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
             for (VariantObject vmd : vmdList) {
                 if(!variantIds.contains(vmd.getId())) {
@@ -79,8 +78,14 @@ public class ProcessChromosome implements Runnable {
                             mapRegion(vmd, vi, geneLociMap);
                         }
                     }
-                    Runnable workerThread=new MapSamplesAndIndex(vmd,vi);
-                    executor.execute(workerThread);
+                    List<VariantSampleDetail> samples = null;
+                    try {
+                        samples = dao.getSamples(vmd.getId());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                /*    Runnable workerThread=new MapSamplesAndIndex(vmd,vi,samples);
+                    executor.execute(workerThread);*/
                          /*   indexList.add(vi);
                             if(indexList.size()>=1000){
                                  //   Runnable workerThread=new MapSamplesAndIndex(vmd,vi)
@@ -91,25 +96,25 @@ public class ProcessChromosome implements Runnable {
 
                                 }
 */
-                       /*  List<VariantSampleDetail> samples = dao.getSamples(vmd.getId());
-                            for (VariantSampleDetail vsd : samples) {
-                                if (vi != null) {
-                                    mapSampleDetails(vsd, vi);
+                    if(samples!=null && samples.size()>0) {
+                        for (VariantSampleDetail vsd : samples) {
+                            if (vi != null) {
+                                mapSampleDetails(vsd, vi);
 
                                 try {
-                                //    System.out.println(vi.toString());
-                                    ObjectMapper mapper=new ObjectMapper();
-                                    String json =  mapper.writeValueAsString(vi);
-                                 BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                                // IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
-                                //    ESClient.getClient().index(request, RequestOptions.DEFAULT);
+                                    //    System.out.println(vi.toString());
+                                    ObjectMapper mapper = new ObjectMapper();
+                                    String json = mapper.writeValueAsString(vi);
+                                    BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                                    // IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
+                                    //    ESClient.getClient().index(request, RequestOptions.DEFAULT);
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
-                                }
-                            }*/
+                            }
                         }
-                        count++;
+                    }
+                        }
 
                         }
          /* if(indexList.size()>0) {
@@ -204,17 +209,17 @@ public class ProcessChromosome implements Runnable {
             scores.add(cs.getScore());
         }*/
      if(v.getConScore()!=null) {
-         List<BigDecimal> scores = new ArrayList<>();
+         List<String> scores = new ArrayList<>();
          scores = vi.getConScores();
          if (scores != null && scores.size() > 0) {
-             for (BigDecimal s : scores) {
-                 if (s != null && !s.equals(v.getConScore())) {
-                     scores.add(v.getConScore());
+             for (String s : scores) {
+                 if (s != null && !s.equals(String.valueOf(v.getConScore()))) {
+                     scores.add(String.valueOf(v.getConScore()));
                  }
              }
          } else {
              scores = new ArrayList<>();
-             scores.add(v.getConScore());
+             scores.add(String.valueOf(v.getConScore()));
          }
          vi.setConScores(scores);
      }

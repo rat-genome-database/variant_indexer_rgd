@@ -141,12 +141,12 @@ public class Manager {
 
         }catch (Exception e){
 
-    //     BulkIndexProcessor.destroy();
+        BulkIndexProcessor.destroy();
           ESClient.destroy();
             e.printStackTrace();
         }
         ESClient.destroy();
-   //    BulkIndexProcessor.destroy();
+      BulkIndexProcessor.destroy();
 
     }
 

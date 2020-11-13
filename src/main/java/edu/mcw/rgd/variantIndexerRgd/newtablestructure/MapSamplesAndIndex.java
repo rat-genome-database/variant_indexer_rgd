@@ -15,10 +15,9 @@ import java.util.List;
 import java.util.Set;
 
 public class MapSamplesAndIndex implements Runnable {
-    private VariantObject vmd;
     private VariantIndex vi;
-    private List<VariantIndex> indexList;
-    private Set<Long> variantIds;
+    List<VariantSampleDetail> samples;
+
     ProcessChromosome p=new ProcessChromosome();
     VariantDao dao=new VariantDao();
 
@@ -64,29 +63,31 @@ public class MapSamplesAndIndex implements Runnable {
         }*/
 
   //  }*/
-    public MapSamplesAndIndex(VariantObject vmd, VariantIndex vi){
-        this.vmd=vmd;
+    public MapSamplesAndIndex(VariantObject vmd, VariantIndex vi, List<VariantSampleDetail> samples){
+
         this.vi=vi;
+        this.samples=samples;
     }
     @Override
     public void run() {
-        List<VariantSampleDetail> samples = null;
+     /*   List<VariantSampleDetail> samples = null;
         try {
             samples = dao.getSamples(vmd.getId());
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
         if (samples != null) {
             for (VariantSampleDetail vsd : samples) {
                 if (vi != null) {
                    p. mapSampleDetails(vsd, vi);
 
                     try {
-
-                        IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
-                        ESClient.getClient().index(request, RequestOptions.DEFAULT);
+                        ObjectMapper mapper=new ObjectMapper();
+                        byte[]  json =  mapper.writeValueAsBytes(vi);
+                        BulkIndexProcessor.getBulkProcessor().add(  new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                      //  ESClient.getClient().index(request, RequestOptions.DEFAULT);
                     } catch (Exception e) {
-                       System.out.println( vi.toString());
+                       System.out.println( "VARIANT ID:"+vi.getVariant_id());
                         e.printStackTrace();
                     }
                 }

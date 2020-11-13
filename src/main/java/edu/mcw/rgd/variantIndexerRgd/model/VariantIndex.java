@@ -42,7 +42,7 @@ public class VariantIndex {
    private int mapKey;
    private int strainRgdId;
    private List<VariantTranscript> variantTranscripts;
-   private List<BigDecimal> conScores;
+   private List<String> conScores;
    private String dbsSnpName;
 
     public String getClinvarId() {
@@ -320,14 +320,15 @@ public class VariantIndex {
         this.variantTranscripts = variantTranscripts;
     }
 
-    public List<BigDecimal> getConScores() {
+    public List<String> getConScores() {
         return conScores;
     }
 
-    public void setConScores(List<BigDecimal> conScores) {
+    public void setConScores(List<String> conScores) {
         this.conScores = conScores;
     }
-    public String toString(){
+
+ /*   public String toString(){
         StringBuilder sb=new StringBuilder();
         sb.append("{");
         if(variant_id!=0){
@@ -514,7 +515,7 @@ public class VariantIndex {
         if(conScores!=null && conScores.size()>0){
             sb.append(", \"conScores\":[");
             boolean first=true;
-            for(BigDecimal s:conScores){
+            for(String s:conScores){
                 if(first) {
                     sb.append(s);
                     first=false;
@@ -526,5 +527,5 @@ public class VariantIndex {
         }
         sb.append("}");
         return sb.toString();
-    }
+    }*/
 }
