@@ -41,90 +41,43 @@ public class ProcessChromosome implements Runnable {
     private int mapKey;
     private int speciesTypeKey;
     private Map<Long, List<String>> geneLociMap;
-    private List<VariantObject> vmdList;
-    List<VariantSampleDetail> samples;
+    private List<VariantIndex> vmdList;
+    private VariantIndex vi;
+    int sampleId;
     VariantDao dao=new VariantDao();
     public ProcessChromosome(){}
-    public ProcessChromosome(String chr, int mapKey, int speciesTypeKey,  Map<Long, List<String>> geneLociMap, List<VariantObject> vmdList ){
+    public ProcessChromosome(String chr, int mapKey, int speciesTypeKey,  Map<Long, List<String>> geneLociMap, VariantIndex vi, int sampleId ){
         this.chr=chr;
         this.mapKey=mapKey;
         this.speciesTypeKey=speciesTypeKey;
         this.geneLociMap=geneLociMap;
-        this.vmdList=vmdList;
-       // this.samples=samples;
+        this.vi=vi;
+        this.sampleId=sampleId;
     }
-    @Override
+   @Override
     public void run() {
+
         System.out.println(Thread.currentThread().getName()+ "\tCHR:"+ chr +"\t started....");
-        Set<Long> variantIds=new HashSet<>();
-        List<VariantIndex> indexList=new ArrayList<>();
+
         try {
-            System.out.println("Variants of CHR-"+ chr+":" +vmdList.size() );
-            ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-            for (VariantObject vmd : vmdList) {
-                if(!variantIds.contains(vmd.getId())) {
-                    variantIds.add(vmd.getId());
-                    VariantIndex vi =null;
-                    boolean first=true;
-                    for (VariantObject obj : vmdList) {
-                        if (obj.getId() == vmd.getId()) {
-                            if(first){
-                               vi= new VariantIndex();
-                                mapVariantDetials(vi, obj);
-                                first=false;
-                            }
-                            mapTranscriptsNPolyphen(obj, vi);
-                            addConservationScores(obj, vi);
-                            mapRegion(vmd, vi, geneLociMap);
-                        }
-                    }
-                    List<VariantSampleDetail> samples = null;
+          //  System.out.println("Variants of CHR-"+ chr+": Sample: "+ sampleId+": " +vmdList.size() );
+          //  ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+                mapRegion(vi, geneLociMap);
+                mapTranscriptsNPolyphen(vi);
+                addConservationScores(vi);
+
                     try {
-                        samples = dao.getSamples(vmd.getId());
+                        ObjectMapper mapper = new ObjectMapper();
+                        String json = mapper.writeValueAsString(vi);
+                     //   BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                         IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
+                           ESClient.getClient().index(request, RequestOptions.DEFAULT);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                /*    Runnable workerThread=new MapSamplesAndIndex(vmd,vi,samples);
-                    executor.execute(workerThread);*/
-                         /*   indexList.add(vi);
-                            if(indexList.size()>=1000){
-                                 //   Runnable workerThread=new MapSamplesAndIndex(vmd,vi)
-                                    Runnable workerThread=new MapSamplesAndIndex(indexList,variantIds);
-                                    executor.execute(workerThread);
-                                    variantIds=new HashSet<>();
-                                    indexList=new ArrayList<>();
 
-                                }
-*/
-                    if(samples!=null && samples.size()>0) {
-                        for (VariantSampleDetail vsd : samples) {
-                            if (vi != null) {
-                                mapSampleDetails(vsd, vi);
-
-                                try {
-                                    //    System.out.println(vi.toString());
-                                    ObjectMapper mapper = new ObjectMapper();
-                                    String json = mapper.writeValueAsString(vi);
-                                    BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                                    // IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(vi.toString(), XContentType.JSON);
-                                    //    ESClient.getClient().index(request, RequestOptions.DEFAULT);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
-                    }
-                        }
-
-                        }
-         /* if(indexList.size()>0) {
-                Runnable workerThread = new MapSamplesAndIndex(indexList, variantIds);
-                executor.execute(workerThread);
-                variantIds = new HashSet<>();
-                indexList = new ArrayList<>();
-            }*/
-            executor.shutdown();
-            while (!executor.isTerminated()) {}
+        //    executor.shutdown();
+        //    while (!executor.isTerminated()) {}
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -132,59 +85,25 @@ public class ProcessChromosome implements Runnable {
         System.out.println(Thread.currentThread().getName()+ "\tCHR:"+ chr +"\t END");
 
     }
-   void mapRegion(VariantObject vmd, VariantIndex vi,Map<Long, List<String>> geneLociMap){
-       vi.setRegionName(geneLociMap.get(vmd.getStartPos()));
+ public  void mapRegion( VariantIndex vi,Map<Long, List<String>> geneLociMap){
+       vi.setRegionName(geneLociMap.get(vi.getStartPos()));
         List<String> regionNameLc=new ArrayList<>();
        try {
-           for (String s : geneLociMap.get(vmd.getStartPos())) {
+           for (String s : geneLociMap.get(vi.getStartPos())) {
                regionNameLc.add(s.toLowerCase());
            }
        }catch (Exception e){
-           System.out.println(vmd.getStartPos());
+           System.out.println(vi.getStartPos());
            e.printStackTrace();
        }
         vi.setRegionNameLc(regionNameLc);
    }
-    void mapVariantDetials(VariantIndex vi, VariantObject vmd){
-        vi.setVariant_id(vmd.getId());
-        vi.setChromosome(vmd.getChromosome());
-        vi.setStartPos(vmd.getStartPos());
-        vi.setEndPos(vmd.getEndPos());
-        vi.setRefNuc(vmd.getReferenceNucleotide());
-        vi.setVarNuc(vmd.getVariantNucleotide());
-        vi.setMapKey(vmd.getMapKey());
-        vi.setClinvarId(vmd.getClinvarId());
-        vi.setRsId(vmd.getRsId());
-        vi.setGenicStatus(vmd.getGenicStatus());
-        vi.setPaddingBase(vmd.getPaddingBase());
-        vi.setVariantType(vmd.getVariantType());
-    }
-    void mapTranscriptsNPolyphen(VariantObject v, VariantIndex vi) throws Exception {
-     /*  List<VariantTranscript> vts=  vdao.getVariantTranscripts(vmd.getId());
-        List<Polyphen> pps= vdao.getPolyphen(vmd.getId());
-        for(VariantTranscript vt:vts){
-            for(Polyphen p:pps){
-                if(p.getTranscriptRgdid()==vt.getTranscriptRgdId()){
-                    vt.setPolyphenStatus(p.getPrediction());
-                }
-            }
-        }*/
-     List<VariantTranscript> vts=new ArrayList<>();
-     List<VariantTranscript> transcripts=vi.getVariantTranscripts();
-     if(transcripts!=null && transcripts.size()>0){
-         vts.addAll(transcripts);
-         for(VariantTranscript transcript:transcripts){
-             if(transcript.getTranscriptRgdId()!=v.getTranscriptRgdId()){
-                 vts.add(getTranscriptObject(v));
-             }
-         }
-     }else {
-         vts.add(getTranscriptObject(v));
 
-     }
-        vi.setVariantTranscripts(vts);
+   public void mapTranscriptsNPolyphen(VariantIndex vi) throws Exception {
+       vi.setVariantTranscripts(dao.getVariantTranscripts(vi.getVariant_id()));
+
     }
-    VariantTranscript getTranscriptObject(VariantObject v){
+   public VariantTranscript getTranscriptObject(VariantObject v){
         VariantTranscript t=new VariantTranscript();
         t.setFullRefAAPos(v.getFullRefAAPos());
         t.setFullRefNucPos(v.getFullRefNucPos());
@@ -201,14 +120,8 @@ public class ProcessChromosome implements Runnable {
         t.setPolyphenStatus(v.getPolyphenStatus());
         return t;
     }
-    void addConservationScores(VariantObject v, VariantIndex vi) throws Exception {
-     /*   String tableName=getConScoreTable(mapKey, vmd.getGenicStatus());
-        List<ConservationScore> conscores=vdao.getConservationScores(vmd.getStartPos(), chr,tableName);
-        List<BigDecimal> scores= new ArrayList<>();
-        for(ConservationScore cs:conscores){
-            scores.add(cs.getScore());
-        }*/
-     if(v.getConScore()!=null) {
+   public void addConservationScores(VariantIndex vi) throws Exception {
+    /* if(v.getConScore()!=null) {
          List<String> scores = new ArrayList<>();
          scores = vi.getConScores();
          if (scores != null && scores.size() > 0) {
@@ -222,8 +135,17 @@ public class ProcessChromosome implements Runnable {
              scores.add(String.valueOf(v.getConScore()));
          }
          vi.setConScores(scores);
-     }
-
+    // }*/
+       List<String> scores=new ArrayList<>();
+       List<ConservationScore> conScores=   dao.getConservationScores(vi.getStartPos(),vi.getChromosome(), getConScoreTable(vi.getMapKey(),""));
+       if (conScores != null && conScores.size() > 0) {
+           for (ConservationScore s : conScores) {
+               if (s != null ) {
+                   scores.add(String.valueOf(s.getScore()));
+               }
+           }
+           vi.setConScores(scores);
+       }
 
     }
     public String getConScoreTable(int mapKey, String genicStatus ) {
@@ -246,7 +168,7 @@ public class ProcessChromosome implements Runnable {
                 return " CONSERVATION_SCORE_6 ";
         }
     }
-    void mapSampleDetails(VariantSampleDetail vsd, VariantIndex vi){
+   public void mapSampleDetails(VariantSampleDetail vsd, VariantIndex vi){
         vi.setSampleId(vsd.getSampleId());
         vi.setAnalysisName(vsd.getAnalysisName());
         vi.setZygosityInPseudo(vsd.getZygosityInPseudo());

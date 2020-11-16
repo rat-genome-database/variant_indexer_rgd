@@ -20,7 +20,6 @@ public class VariantIndex {
     private long startPos;
     private int totalDepth;
     private int varFreq;
-    private String analystFlag;
     private String variantType;
     private String varNuc;
     private String zygosityStatus;
@@ -32,15 +31,11 @@ public class VariantIndex {
     private String zygosityInPseudo;
     private int qualityScore;
     private String HGVSNAME;
-    private int rgdId;
     private List<String> regionName;
     private List<String> regionNameLc;
     /*****************Sample******************/
    private String  analysisName;
-   private int  patientId;
-   private String  gender;
    private int mapKey;
-   private int strainRgdId;
    private List<VariantTranscript> variantTranscripts;
    private List<String> conScores;
    private String dbsSnpName;
@@ -157,13 +152,7 @@ public class VariantIndex {
         this.varFreq = varFreq;
     }
 
-    public String getAnalystFlag() {
-        return analystFlag;
-    }
 
-    public void setAnalystFlag(String analystFlag) {
-        this.analystFlag = analystFlag;
-    }
 
     public String getVariantType() {
         return variantType;
@@ -253,14 +242,6 @@ public class VariantIndex {
         this.HGVSNAME = HGVSNAME;
     }
 
-    public int getRgdId() {
-        return rgdId;
-    }
-
-    public void setRgdId(int rgdId) {
-        this.rgdId = rgdId;
-    }
-
     public String getAnalysisName() {
         return analysisName;
     }
@@ -269,47 +250,12 @@ public class VariantIndex {
         this.analysisName = analysisName;
     }
 
-
-
-    public int getPatientId() {
-        return patientId;
-    }
-
-    public void setPatientId(int patientId) {
-        this.patientId = patientId;
-    }
-
-
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-
-
-
-
-
     public int getMapKey() {
         return mapKey;
     }
 
     public void setMapKey(int mapKey) {
         this.mapKey = mapKey;
-    }
-
-
-
-    public int getStrainRgdId() {
-        return strainRgdId;
-    }
-
-    public void setStrainRgdId(int strainRgdId) {
-        this.strainRgdId = strainRgdId;
     }
 
     public List<VariantTranscript> getVariantTranscripts() {

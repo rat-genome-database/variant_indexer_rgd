@@ -232,11 +232,8 @@ public class VariantHumanIndexer implements Runnable {
                         vi.setVarNuc(v[4]);
                         vi.setSampleId(sample.getId());
                         vi.setAnalysisName(sample.getAnalysisName());
-                        vi.setPatientId(sample.getPatientId());
-                        vi.setGender(sample.getGender());
                         vi.setQualityScore(qualityScore);
                         //   vi.setHGVSNAME(line.getHgvsName());
-                        vi.setStrainRgdId(sample.getStrainRgdId());
                         vi.setVariantType(variantType);
                         vi.setConScores(conScores);
                         vi.setGenicStatus(genicStatus);

@@ -136,7 +136,6 @@ public class Indexer implements Runnable{
         v.setGenicStatus(vd.getGenicStatus());
         v.setMapKey(vd.getMapKey());
         v.setAnalysisName(vd.getLocationName());
-        v.setGender(vd.getChromosome());
        // v.setHGVSNAME();
         v.setRsId(vd.getRsId());
         v.setClinvarId(vd.getClinvarId());

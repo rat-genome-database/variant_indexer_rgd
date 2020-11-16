@@ -159,7 +159,7 @@ public class Manager {
         else  if(command.equalsIgnoreCase("update"))
             admin.updateIndex();
         ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-
+        Runnable workerThread= null;
         switch (speciesTypeKey) {
           /*  case 1:
                 processHumanVCF();
@@ -171,63 +171,38 @@ public class Manager {
                 System.out.println("Processing "+species+" variants...");
                 this.setMapKey(mapKey);
 
-        /*        switch(storeType) {
-                    case "db":
-                    //   SampleDAO sampleDAO = new SampleDAO();
-                     //  sampleDAO.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
-                       //List<Sample> samples=sampleDAO.getSamplesByMapKey(mapKey);
-                    //   List<Chromosome> chromosomes=mapDAO.getChromosomes(mapKey);
-                      //  Variants variants = new Variants();
 
-          //      for(Chromosome c:chromosomes) {
-             //   String chr = c.getChromosome();
-               //    String chr="12";
-
-                    Map<Long, List<String>> geneLociMap = getGeneLociMap(mapKey, chr);
-                    List<VariantMapData> uniqueVariants=vdao.getVariants1(chr, mapKey, speciesTypeKey);
-                //    vmdList= vdao.getVariants(chr, mapKey, speciesTypeKey);
-                    System.out.print("\tVariants Size CHR-"+ chr+":" +uniqueVariants.size()+"\n");
-                    for(VariantMapData vmd:uniqueVariants) {
-                        List<VariantObject> vmdList= vdao.getVariants(chr, mapKey, speciesTypeKey, vmd.getId());
-                        List<VariantSampleDetail> samples = vdao.getSamples(vmdList.get(0).getId());
-
-
-                        Runnable workerThread = new ProcessChromosome(chr, mapKey, speciesTypeKey, geneLociMap, vmdList,samples);
-                        executor.execute(workerThread);
-                        //   workerThread.start();
-                    }
-        //        }
-
-                        break;
-                    case "es": // pull variants from previously loaded variants in the alternate schema (each document with all the samples)
-                        ESDataService dataService=new ESDataService();
-                        dataService.indexVariants(mapKey, chr,speciesTypeKey);
-                        break;
-                    default:
-                        break;
-
-                }*/
-
-             //   List<Chromosome> chromosomes=mapDAO.getChromosomes(mapKey);
-
-            //     for(Chromosome chromosome:chromosomes){
+                //     for(Chromosome chromosome:chromosomes){
+                SampleDAO sampleDAO = new SampleDAO();
+                sampleDAO.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
+                List<Sample> samples=sampleDAO.getSamplesByMapKey(mapKey);
                 System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
-                     for(String  chr:chromosomes){
-                    //   chr=chromosome.getChromosome();
-                      //  chr="12";
-                Map<Long, List<String>> geneLociMap = getGeneLociMap(mapKey, chr);
-                List<VariantObject> vmdList= vdao.getVariants(chr, mapKey, speciesTypeKey);
-                        Runnable workerThread = new ProcessChromosome(chr, mapKey, speciesTypeKey, geneLociMap, vmdList);
-                        executor.execute(workerThread);
-                   }
+                     for(String  chr:chromosomes) {
+                         //   chr=chromosome.getChromosome();
+                         //  chr="12";
+                         Map<Long, List<String>> geneLociMap = getGeneLociMap(mapKey, chr);
 
+                         for (Sample s : samples) {
+                      //   Sample s= sampleDAO.getSample(911);
+                          //   List<VariantObject> vmdList = vdao.getVariants(chr, mapKey, speciesTypeKey, s.getId());
+                           List<VariantIndex> indexList = vdao.getVariants(s.getId(),chr, mapKey );
+                         System.out.println("VARIANTS OF CHR: "+ chr+ "\tSAMPLE-"+s.getId()+":"+indexList.size());
+
+                           for(VariantIndex vi: indexList) {
+
+                               workerThread=new ProcessChromosome(chr, mapKey, speciesTypeKey, geneLociMap, vi, s.getId());
+                               executor.execute(workerThread);
+
+                           }
+                        }
+                     }
                 break;
             default:
                 break;
 
             }
 
-        executor.shutdown();
+     executor.shutdown();
         while (!executor.isTerminated()) {}
      String clusterStatus = this.getClusterHealth(RgdIndex.getNewAlias());
         if (!clusterStatus.equalsIgnoreCase("ok")) {

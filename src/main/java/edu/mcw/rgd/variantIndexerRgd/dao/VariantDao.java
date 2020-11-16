@@ -12,6 +12,7 @@ import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
+import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndexObject;
 import org.springframework.jdbc.core.SqlParameter;
 
@@ -79,7 +80,16 @@ public class VariantDao extends AbstractDAO {
         return execute(q, startPos,chr);
     }
     public List<edu.mcw.rgd.datamodel.variants.VariantTranscript> getVariantTranscripts(long rgdId) throws Exception {
-        String sql="select * from variant_transcript where variant_rgd_id =?";
+        String sql=" select t.*, p.prediction from variant_transcript t left outer join " +
+                "                polyphen p on (t.variant_rgd_id=p.variant_rgd_id and t.transcript_rgd_id=p.transcript_rgd_id)\n" +
+                "                where t.variant_rgd_id=? ";
+        VariantTranscriptQuery q=new VariantTranscriptQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+        return q.execute(rgdId);
+    }
+    public List<edu.mcw.rgd.datamodel.variants.VariantTranscript> getVariantTranscriptsNpolyphen(long rgdId) throws Exception {
+        String sql="select t.*, p.PREDICTION from variant_transcript t, polyphen p where v.variant_rgd_id =p.rgd_id and" +
+                "v.transcript_rgd_id=p.transcript_rgd_id ";
         VariantTranscriptQuery q=new VariantTranscriptQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
         return q.execute(rgdId);
@@ -110,7 +120,7 @@ public class VariantDao extends AbstractDAO {
         VariantSampleQuery q=new VariantSampleQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql.toString());
         return q.execute();
     }
-    public List<VariantObject> getVariants(String chr, int mapKey, int speciesTypeKey) throws Exception {
+    public List<VariantObject> getVariants(String chr, int mapKey, int speciesTypeKey, int sampleId) throws Exception {
         String conScoreTable=getConScoreTable(mapKey,null);
 
         String sql =" select             " +
@@ -129,21 +139,34 @@ public class VariantDao extends AbstractDAO {
                 "                 vt.TRIPLET_ERROR, " +
                 "                 vt.FRAMESHIFT ," +
                 "                 p.prediction, " +
-                "                cs.score " +
+                "                cs.score, " +
+                "   vsd.RGD_ID," +
+                "   vsd.SOURCE," +
+                "   vsd.SAMPLE_ID," +
+                "   vsd.TOTAL_DEPTH," +
+                "   vsd.VAR_FREQ," +
+                "   vsd.ZYGOSITY_STATUS," +
+                "   vsd.ZYGOSITY_PERCENT_READ," +
+                "   vsd.ZYGOSITY_POSS_ERROR," +
+                "   vsd.ZYGOSITY_REF_ALLELE," +
+                "   vsd.ZYGOSITY_NUM_ALLELE," +
+                "   vsd.ZYGOSITY_IN_PSEUDO," +
+                "   vsd.QUALITY_SCORE" +
                 " from variant v " +
                 "                              left outer join variant_map_data vmd on (v.rgd_id=vmd.rgd_id)" +
                 "                              left outer join variant_transcript vt on (vt.variant_rgd_id=v.rgd_id)" +
                 "                              left outer join polyphen p on (v.rgd_id=p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id) " +
                 "                              left outer join "+ conScoreTable+" cs on (cs.chr=vmd.chromosome and cs.position=vmd.start_pos)" +
+                "                               left outer join variant_sample_detail vsd on (v.rgd_id=vsd.rgd_id)" +
                 "                              where v.species_type_key=? " +
                 "                               and vmd.chromosome=?" +
-
                 "                              and vmd.map_key=? " +
-           //     "                               and v.rgd_id=?" +
+                "                               and vsd.sample_id=?" +
+           //     "                              and v.rgd_id=?" +
                 "                             ";  //Total RECORD COUNT: 1888283; chr:1; map_key:360
       //  VariantMapQuery q=new VariantMapQuery(DataSourceFactory.getInstance().getDataSource("Variant"), sql);
         VariantQuery q=new VariantQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
-        return execute(q,speciesTypeKey,chr,mapKey);
+        return execute(q,speciesTypeKey,chr,mapKey,sampleId);
     }
     public String getConScoreTable(int mapKey, String genicStatus ) {
         switch(mapKey) {
@@ -185,7 +208,89 @@ public class VariantDao extends AbstractDAO {
         VariantMapQuery q=new VariantMapQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
         return execute(q,speciesTypeKey,chr,mapKey);
     }
+    public List<VariantIndex> getVariants(int sampleId, String chr, int mapKey) throws Exception {
+        String sql = "select v.*, " +
+                "      vsd.RGD_ID," +
+                "      vsd.SOURCE," +
+                "      vsd.SAMPLE_ID," +
+                "      vsd.TOTAL_DEPTH," +
+                "      vsd.VAR_FREQ," +
+                "      vsd.ZYGOSITY_STATUS," +
+                "      vsd.ZYGOSITY_PERCENT_READ," +
+                "      vsd.ZYGOSITY_POSS_ERROR," +
+                "      vsd.ZYGOSITY_REF_ALLELE," +
+                "      vsd.ZYGOSITY_NUM_ALLELE," +
+                "      vsd.ZYGOSITY_IN_PSEUDO," +
+                "      vsd.QUALITY_SCORE," +
+                "      vmd.chromosome, vmd.start_pos, vmd.end_pos, " +
+                "      vmd.genic_status, vmd.padding_base, vmd.map_key " +
+                " from variant v, variant_sample_detail vsd, " +
+                "variant_map_data vmd where " +
+                "v.rgd_id=vmd.rgd_id " +
+                "and v.rgd_id=vsd.rgd_id " +
+                "and vmd.map_key=? " +
+                "and vmd.chromosome=? " +
+                "and vsd.sample_id=?";
 
+        List<VariantIndex> indexObjects=new ArrayList<>();
+
+        ResultSet rs = null;
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        try {
+            connection = DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
+            stmt = connection.prepareStatement(sql);
+            stmt.setInt(1, mapKey);
+            stmt.setString(2, chr);
+            stmt.setInt(3, sampleId);
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                try {
+                    VariantIndex vi = new VariantIndex();
+                    long variant_id = rs.getLong("rgd_id");
+                    vi.setVariant_id(variant_id);
+                    vi.setChromosome(rs.getString("chromosome"));
+                    vi.setPaddingBase(rs.getString("padding_base"));
+                    vi.setEndPos(rs.getLong("end_pos"));
+                    vi.setRefNuc(rs.getString("ref_nuc"));
+                    vi.setSampleId(rs.getInt("sample_id"));
+                    vi.setStartPos(rs.getLong("start_pos"));
+                    vi.setTotalDepth(rs.getInt("total_depth"));
+                    vi.setVarFreq(rs.getInt("var_freq"));
+                    vi.setVariantType(rs.getString("variant_type"));
+                    vi.setVarNuc(rs.getString("var_nuc"));
+                    vi.setZygosityStatus(rs.getString("zygosity_status"));
+                    vi.setGenicStatus(rs.getString("genic_status"));
+                    vi.setZygosityPercentRead(rs.getDouble("zygosity_percent_read"));
+                    vi.setZygosityPossError(rs.getString("zygosity_poss_error"));
+                    vi.setZygosityRefAllele(rs.getString("zygosity_ref_allele"));
+                    vi.setZygosityNumAllele(rs.getInt("zygosity_num_allele"));
+                    vi.setZygosityInPseudo(rs.getString("zygosity_in_pseudo"));
+                    vi.setQualityScore(rs.getInt("quality_score"));
+                  //  vi.setHGVSNAME(rs.getString("hgvs_name"));
+                 //   vi.setAnalysisName(rs.getString("analysis_name"));
+                    vi.setMapKey(mapKey);
+                    indexObjects.add(vi);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            rs.close();
+            stmt.close();
+            connection.close();
+        }catch (Exception e){
+            if (rs != null) {
+                rs.close();
+            }
+            if (stmt != null) {
+                stmt.close();
+            }
+            if (connection != null) {
+                connection.close();
+            }
+        }
+        return indexObjects;
+    }
   /*  public List<VariantIndex> getVariantResults(int sampleId, String chr, int mapKey) {
         String variantTable=new String();
         String variantTranscriptTable= new String();

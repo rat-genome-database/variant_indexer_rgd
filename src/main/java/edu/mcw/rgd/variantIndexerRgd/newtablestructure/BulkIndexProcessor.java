@@ -57,9 +57,11 @@ public class BulkIndexProcessor {
     }
     public static void destroy(){
         try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            if(bulkProcessor!=null)
-            bulkProcessor.close();
+            if(bulkProcessor!=null) {
+                bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
+
+                bulkProcessor.close();
+            }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }finally {
