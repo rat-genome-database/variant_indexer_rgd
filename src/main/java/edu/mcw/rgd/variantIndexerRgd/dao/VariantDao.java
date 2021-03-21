@@ -79,13 +79,16 @@ public class VariantDao extends AbstractDAO {
 
         return execute(q, startPos,chr);
     }
-    public List<edu.mcw.rgd.datamodel.variants.VariantTranscript> getVariantTranscripts(long rgdId) throws Exception {
+    public List<edu.mcw.rgd.datamodel.variants.VariantTranscript> getVariantTranscripts(long rgdId, int mapKey) throws Exception {
         String sql=" select t.*, p.prediction from variant_transcript t left outer join " +
                 "                polyphen p on (t.variant_rgd_id=p.variant_rgd_id and t.transcript_rgd_id=p.transcript_rgd_id)\n" +
-                "                where t.variant_rgd_id=? ";
+                "                where t.variant_rgd_id=? " +
+                "                and t.map_key=?";
         VariantTranscriptQuery q=new VariantTranscriptQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
         q.declareParameter(new SqlParameter(Types.INTEGER));
-        return q.execute(rgdId);
+        q.declareParameter(new SqlParameter(Types.INTEGER));
+
+        return q.execute(rgdId, mapKey);
     }
     public List<edu.mcw.rgd.datamodel.variants.VariantTranscript> getVariantTranscriptsNpolyphen(long rgdId) throws Exception {
         String sql="select t.*, p.PREDICTION from variant_transcript t, polyphen p where v.variant_rgd_id =p.rgd_id and" +

@@ -10,17 +10,16 @@ import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.datamodel.*;
 
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
-import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 
-import edu.mcw.rgd.variantIndexerRgd.es.ESDataService;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
 import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 import edu.mcw.rgd.variantIndexerRgd.newtablestructure.ProcessChromosome;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.ProcessSample;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;
@@ -63,23 +62,20 @@ public class Manager {
     private RgdIndex rgdIndex;
     private static List environments;
     private IndexAdmin admin;
-     private int mapKey;
+    private int mapKey;
     private int speciesTypeKey;
     private String chr;
-     private String fromChr;
+    private String fromChr;
     private String toChr;
-     private String fileName;
+    private String fileName;
     private String command;     //update or reindex
-     private String process;     // transcripts or variants
-     private String env;     // dev or test or prod
-    private String storeType;
+    private String process;     // transcripts or variants
+    private String env;     // dev or test or prod
     List<String> chromosomes;//loading to es or db
 
     Map<Integer, List<BigDecimal>> conScoresMap=new HashMap<>();
     VariantLoad3 loader=new VariantLoad3();
     Zygosity zygosity=new Zygosity();
-    MapDAO mapDAO=new MapDAO();
-    VariantDao variantDao= new VariantDao();
     BulkProcessor bulkProcessor;
 
     static Logger log= Logger.getLogger(Manager.class);
@@ -110,11 +106,11 @@ public class Manager {
           }catch (Exception e){
               e.printStackTrace();
           }
-            if(manager.fromChr!=null &&  manager.toChr==null) {
+          if(manager.fromChr!=null &&  manager.toChr==null) {
                 chromosomes.add(manager.fromChr);
 
-            }
-            if(manager.fromChr!=null && manager.toChr!=null) {
+          }
+          if(manager.fromChr!=null && manager.toChr!=null) {
               System.out.println("FROM CHR:" + manager.fromChr + "\tTO CHR: " + manager.toChr);
               for (int i = Integer.parseInt(manager.fromChr); i <= Integer.parseInt(manager.toChr); i++) {
                   chromosomes.add(Integer.toString(i));
@@ -136,7 +132,7 @@ public class Manager {
                 manager.rgdIndex.setIndices(indices);
             }
 
-                manager.run(args);
+            manager.run(args);
 
 
         }catch (Exception e){
@@ -170,31 +166,20 @@ public class Manager {
             case 6:
                 System.out.println("Processing "+species+" variants...");
                 this.setMapKey(mapKey);
-
-
-                //     for(Chromosome chromosome:chromosomes){
                 SampleDAO sampleDAO = new SampleDAO();
                 sampleDAO.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
-                List<Sample> samples=sampleDAO.getSamplesByMapKey(mapKey);
+                List<Sample> samples=new ArrayList<>();
+                if(mapKey==17) {
+                   samples.add(sampleDAO.getSample(1));
+                }else{
+                    samples.addAll(sampleDAO.getSamplesByMapKey(mapKey));
+                }
                 System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
                      for(String  chr:chromosomes) {
-                         //   chr=chromosome.getChromosome();
                          //  chr="12";
-                         Map<Long, List<String>> geneLociMap = getGeneLociMap(mapKey, chr);
+                         workerThread=new ProcessChromosome(chr, mapKey, samples);
+                         executor.execute(workerThread);
 
-                         for (Sample s : samples) {
-                      //   Sample s= sampleDAO.getSample(911);
-                          //   List<VariantObject> vmdList = vdao.getVariants(chr, mapKey, speciesTypeKey, s.getId());
-                           List<VariantIndex> indexList = vdao.getVariants(s.getId(),chr, mapKey );
-                         System.out.println("VARIANTS OF CHR: "+ chr+ "\tSAMPLE-"+s.getId()+":"+indexList.size());
-
-                           for(VariantIndex vi: indexList) {
-
-                               workerThread=new ProcessChromosome(chr, mapKey, speciesTypeKey, geneLociMap, vi, s.getId());
-                               executor.execute(workerThread);
-
-                           }
-                        }
                      }
                 break;
             default:

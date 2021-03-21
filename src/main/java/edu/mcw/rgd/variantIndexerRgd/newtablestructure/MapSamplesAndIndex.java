@@ -6,19 +6,16 @@ import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.xcontent.XContentType;
 
 import java.util.List;
-import java.util.Set;
 
 public class MapSamplesAndIndex implements Runnable {
     private VariantIndex vi;
     List<VariantSampleDetail> samples;
 
-    ProcessChromosome p=new ProcessChromosome();
+    ProcessVariant p=new ProcessVariant();
     VariantDao dao=new VariantDao();
 
  /*   public MapSamplesAndIndex(List<VariantIndex> indexList, Set<Long> variantIds){

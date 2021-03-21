@@ -9,7 +9,9 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.common.settings.Settings;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Properties;
 
 /**
  * Created by jthota on 11/15/2019.
@@ -46,12 +48,19 @@ public class ESClient {
     public static RestHighLevelClient getInstance() {
 
         if(client==null){
+            Properties props= getProperties();
 
             try {
               /*  client= new PreBuiltTransportClient(settings)
                         .addTransportAddress(new TransportAddress(InetAddress.getByName("green.rgd.mcw.edu"), 9300));*/
                 client=new RestHighLevelClient(RestClient.builder(
-                        new HttpHost("green.rgd.mcw.edu", 9200, "http")
+                     //   new HttpHost("travis.rgd.mcw.edu", 9200, "http")
+                        new HttpHost(props.get("HOST1").toString(), 9200, "http"),
+                        new HttpHost(props.get("HOST2").toString(), 9200, "http"),
+                        new HttpHost(props.get("HOST3").toString(), 9200, "http"),
+                        new HttpHost(props.get("HOST4").toString(), 9200, "http"),
+                        new HttpHost(props.get("HOST5").toString(), 9200, "http")
+
 
                 ).setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback(){
 
@@ -74,5 +83,26 @@ public class ESClient {
 
         return client;
     }
+    static Properties getProperties(){
+        Properties props= new Properties();
+        FileInputStream fis=null;
 
+
+        try{
+     //       fis=new FileInputStream("C:/Apps/elasticsearchProps.properties");
+            fis=new FileInputStream("/data/pipelines/properties/es_properties.properties");
+            props.load(fis);
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        try {
+            if (fis != null) {
+                fis.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return props;
+    }
 }
