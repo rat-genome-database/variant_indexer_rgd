@@ -74,7 +74,7 @@ public class IndexAdmin {
         CreateIndexRequest request=new CreateIndexRequest(index);
         request.settings(Settings.builder()
                 .put("index.number_of_shards",5)
-                .put("index.number_of_replicas", 0))
+                .put("index.number_of_replicas", 1))
                // .loadFromSource(analyzers, XContentType.JSON))
         ;
     //    request.mapping(mappings, XContentType.JSON);

@@ -23,13 +23,18 @@ public class ProcessVariant implements Runnable {
 
     private Map<Long, List<String>> geneLociMap;
     private VariantIndex vi;
-
+    List<VariantTranscript> transcripts;
+    BulkIndexProcessor bulkIndexProcessor;
     VariantDao dao=new VariantDao();
     public ProcessVariant(){}
-    public ProcessVariant(Map<Long, List<String>> geneLociMap, VariantIndex vi){
+    public ProcessVariant(Map<Long, List<String>> geneLociMap, VariantIndex vi,
+                          List<VariantTranscript> transcripts,
+                                  BulkIndexProcessor bulkIndexProcessor){
 
         this.geneLociMap=geneLociMap;
         this.vi=vi;
+        this.bulkIndexProcessor=bulkIndexProcessor;
+        this.transcripts=transcripts;
 
     }
    @Override
@@ -37,15 +42,15 @@ public class ProcessVariant implements Runnable {
         try {
 
                 mapRegion(vi, geneLociMap);
-                mapTranscriptsNPolyphen(vi);
+                mapTranscriptsNPolyphen(vi,transcripts);
                 addConservationScores(vi);
 
                     try {
                         ObjectMapper mapper = new ObjectMapper();
                         String json = mapper.writeValueAsString(vi);
-                     //   BulkIndexProcessor.getBulkProcessor().add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                         IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
-                           ESClient.getClient().index(request, RequestOptions.DEFAULT);
+                     bulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                     //    IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
+                     //      ESClient.getClient().index(request, RequestOptions.DEFAULT);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -71,9 +76,15 @@ public class ProcessVariant implements Runnable {
         vi.setRegionNameLc(regionNameLc);
    }
 
-   public void mapTranscriptsNPolyphen(VariantIndex vi) throws Exception {
-       vi.setVariantTranscripts(dao.getVariantTranscripts(vi.getVariant_id(), vi.getMapKey()));
-
+   public void mapTranscriptsNPolyphen(VariantIndex vi, List<VariantTranscript> transcripts) throws Exception {
+   //    vi.setVariantTranscripts(dao.getVariantTranscripts(vi.getVariant_id(), vi.getMapKey()));
+       List<VariantTranscript> vts=new ArrayList<>();
+       for(VariantTranscript vt:transcripts){
+           if(vt.getVariantId()== vi.getVariant_id()){
+               vts.add(vt);
+           }
+       }
+       vi.setVariantTranscripts(vts);
     }
    public VariantTranscript getTranscriptObject(VariantObject v){
         VariantTranscript t=new VariantTranscript();

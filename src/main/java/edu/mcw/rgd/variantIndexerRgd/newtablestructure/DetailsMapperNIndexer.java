@@ -1,144 +1,96 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
-/**
- * Created by jthota on 11/5/2020.
- */
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.VariantSampleMapping;
-import edu.mcw.rgd.datamodel.variants.VariantObject;
-import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
-import edu.mcw.rgd.datamodel.variants.VariantTranscript;
-import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
-import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.xcontent.XContentType;
-
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.dao.spring.ConservationScoreMapper;
 import edu.mcw.rgd.dao.spring.variants.Polyphen;
 import edu.mcw.rgd.datamodel.ConservationScore;
-import edu.mcw.rgd.datamodel.prediction.PolyPhenPrediction;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
+import edu.mcw.rgd.variantIndexerRgd.model.Json;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import static edu.mcw.rgd.variantIndexerRgd.Manager.getGeneLociMap;
-
-public class ProcessChromosomeBKUP implements Runnable {
+public class DetailsMapperNIndexer implements Runnable{
     private String chr;
     private int mapKey;
-    private int speciesTypeKey;
-    List<VariantTranscript> transcripts;
-    VariantDao vdao=new VariantDao();
-
     private Map<Long, List<String>> geneLociMap;
-    private List<VariantMapData> vmdList;
+    private VariantMapData vmd;
+    VariantDao vdao=new VariantDao();
     List<VariantSampleDetail> samples;
+    List<VariantTranscript> transcripts;
 
-    public ProcessChromosomeBKUP(String chr, int mapKey, int speciesTypeKey,  Map<Long, List<String>> geneLociMap,
-                                 List<VariantMapData> vmdList,List<VariantSampleDetail> samples,
-                                 List<VariantTranscript> transcripts
-                                ){
+    public DetailsMapperNIndexer(String chr, int mapKey, Map<Long, List<String>> geneLociMap,VariantMapData vmd,List<VariantSampleDetail> samples,
+
+                                 List<VariantTranscript> transcripts){
         this.chr=chr;
         this.mapKey=mapKey;
-        this.speciesTypeKey=speciesTypeKey;
         this.geneLociMap=geneLociMap;
-        this.vmdList=vmdList;
+        this.vmd=vmd;
         this.samples=samples;
+
         this.transcripts=transcripts;
     }
-
+    @Override
     public void run() {
-    /*    System.out.println(Thread.currentThread().getName()+ "\tCHR:"+ chr +"\t started....");
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);*/
-        ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        Runnable workerThread= null;
+
+        VariantIndex vi = new VariantIndex();
+        mapVariantDetials(vi, vmd);
         try {
-            System.out.println("Variants of CHR-"+ chr+":" +vmdList.size() );
-
-            for (VariantMapData vmd : vmdList) {
-         //   VariantMapData vmd=vmdList.get(0);
-                workerThread=new DetailsMapperNIndexer(chr, mapKey, geneLociMap,vmd,samples,
-                        transcripts);
-                executor.execute(workerThread);
-
-    /*            VariantIndex vi = new VariantIndex();
-
-                mapVariantDetials(vi, vmd);
-                mapTranscriptsNPolyphen(vmd, vi);
-                addConservationScores(vmd, vi);
-                mapRegion(vmd, vi, geneLociMap);
-                List<VariantSampleDetail> variantSamplesDetails = getSamples(vmd.getId(),samples);
-                for (VariantSampleDetail vsd : variantSamplesDetails) {
-                    mapSampleDetails(vsd, vi);
-                    try {
-                        byte[] json = mapper.writeValueAsBytes(vi);
-                        BulkIndexProcessor.getInstance().bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
-                        //     bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                    } catch (JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
-                }
-*/
-          }
-
-
-            executor.shutdown();
-            while (!executor.isTerminated()) {}
-
-        } catch (Exception e) {
-            executor.shutdown();
-            e.printStackTrace();
+            mapTranscriptsNPolyphen(vmd, vi, transcripts);
+        } catch (Exception exception) {
+            exception.printStackTrace();
         }
+        try {
+            addConservationScores(vmd, vi);
+        } catch (Exception exception) {
+            exception.printStackTrace();
+        }
+        mapRegion(vmd, vi, geneLociMap);
+        ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        Runnable workerThread =null;
+        workerThread=new BulkIndexer(vi, vmd, samples);
+        executor.execute(workerThread);
+        executor.shutdown();
+        while (!executor.isTerminated()) {}
 
-        System.out.println(Thread.currentThread().getName()+ "\tCHR:"+ chr +"\t END");
+     /*   List<VariantSampleDetail> variantSamplesDetails = getSamples(vmd.getId(),samples);
+        for (VariantSampleDetail vsd : variantSamplesDetails) {
+            mapSampleDetails(vsd, vi);
+            try {
+                byte[] json = Json.serializer().mapper().writeValueAsBytes(vi);
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+
+                //     bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        }*/
 
     }
+
     List<VariantSampleDetail> getSamples(long variantRgdId, List<VariantSampleDetail> samples){
         List<VariantSampleDetail> sampleDetails=new ArrayList<>();
         for(VariantSampleDetail vsd:samples){
-            if(vsd.getId()==variantRgdId){
-                sampleDetails.add(vsd);
+            try {
+                if (vsd.getId() == variantRgdId) {
+                    sampleDetails.add(vsd);
+                }
+            }catch (Exception e){
+                e.printStackTrace();
             }
         }
         return sampleDetails;
@@ -165,8 +117,8 @@ public class ProcessChromosomeBKUP implements Runnable {
         vi.setPaddingBase(vmd.getPaddingBase());
         vi.setVariantType(vmd.getVariantType());
     }
-    void mapTranscriptsNPolyphen(VariantMapData vmd, VariantIndex vi) throws Exception {
-       List<VariantTranscript> vts=  vdao.getVariantTranscripts(vmd.getId(), vmd.getMapKey());
+    void mapTranscriptsNPolyphen(VariantMapData vmd, VariantIndex vi, List<VariantTranscript> transcripts) throws Exception {
+   /*     List<VariantTranscript> vts=  vdao.getVariantTranscripts(vmd.getId(), vmd.getMapKey());
         List<Polyphen> pps= vdao.getPolyphen(vmd.getId());
         for(VariantTranscript vt:vts){
             for(Polyphen p:pps){
@@ -176,6 +128,13 @@ public class ProcessChromosomeBKUP implements Runnable {
             }
         }
 
+*/
+        List<VariantTranscript> vts=new ArrayList<>();
+        for(VariantTranscript vt:transcripts){
+            if(vt.getVariantId()== vmd.getId()){
+                vts.add(vt);
+            }
+        }
         vi.setVariantTranscripts(vts);
     }
     VariantTranscript getTranscriptObject(VariantObject v){
@@ -195,14 +154,15 @@ public class ProcessChromosomeBKUP implements Runnable {
         t.setPolyphenStatus(v.getPolyphenStatus());
         return t;
     }
-   void addConservationScores(VariantMapData vmd, VariantIndex vi) throws Exception {
+    void addConservationScores(VariantMapData vmd, VariantIndex vi) throws Exception {
        String tableName=getConScoreTable(mapKey, vmd.getGenicStatus());
         List<ConservationScore> conscores=vdao.getConservationScores(vmd.getStartPos(), chr,tableName);
         List<String> scores= new ArrayList<>();
         for(ConservationScore cs:conscores){
             scores.add(String.valueOf(cs.getScore()));
         }
-       vi.setConScores(scores);
+
+        vi.setConScores(scores);
 
 
     }
@@ -239,4 +199,7 @@ public class ProcessChromosomeBKUP implements Runnable {
         vi.setVarFreq(vsd.getVariantFrequency());
 
     }
+
+
+
 }

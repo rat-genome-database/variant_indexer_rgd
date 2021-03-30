@@ -5,7 +5,6 @@ package edu.mcw.rgd.variantIndexerRgd;
 import edu.mcw.rgd.dao.DataSourceFactory;
 
 import edu.mcw.rgd.dao.impl.GeneLociDAO;
-import edu.mcw.rgd.dao.impl.MapDAO;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.datamodel.*;
 
@@ -17,9 +16,7 @@ import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 
 import edu.mcw.rgd.variantIndexerRgd.model.*;
-import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
-import edu.mcw.rgd.variantIndexerRgd.newtablestructure.ProcessChromosome;
-import edu.mcw.rgd.variantIndexerRgd.newtablestructure.ProcessSample;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;
@@ -76,7 +73,7 @@ public class Manager {
     Map<Integer, List<BigDecimal>> conScoresMap=new HashMap<>();
     VariantLoad3 loader=new VariantLoad3();
     Zygosity zygosity=new Zygosity();
-    BulkProcessor bulkProcessor;
+    BulkIndexProcessor bulkIndexProcessor;
 
     static Logger log= Logger.getLogger(Manager.class);
 
@@ -90,6 +87,7 @@ public class Manager {
       //  ESClient es= (ESClient) bf.getBean("client");
      //   BulkIndexProcessor bulkIndexProcessor= (BulkIndexProcessor) bf.getBean("bulkProcessor");
        manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
+       manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
       try{
 
             List<String> indices= new ArrayList<>();
@@ -137,12 +135,13 @@ public class Manager {
 
         }catch (Exception e){
 
-        BulkIndexProcessor.destroy();
+        manager.bulkIndexProcessor.destroy();
           ESClient.destroy();
             e.printStackTrace();
         }
+        manager.bulkIndexProcessor.destroy();
+
         ESClient.destroy();
-      BulkIndexProcessor.destroy();
 
     }
 
@@ -168,19 +167,57 @@ public class Manager {
                 this.setMapKey(mapKey);
                 SampleDAO sampleDAO = new SampleDAO();
                 sampleDAO.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
-                List<Sample> samples=new ArrayList<>();
+             List<Sample> samples=new ArrayList<>();
                 if(mapKey==17) {
                    samples.add(sampleDAO.getSample(1));
                 }else{
                     samples.addAll(sampleDAO.getSamplesByMapKey(mapKey));
                 }
                 System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
-                     for(String  chr:chromosomes) {
+             /*        for(String  chr:chromosomes) {
                          //  chr="12";
-                         workerThread=new ProcessChromosome(chr, mapKey, samples);
-                         executor.execute(workerThread);
+                         System.out.println("Started CHROMOSOME:"+chr+".....");
+                         Map<Long, List<String>> geneLociMap = null;
+                         try {
+                             geneLociMap = getGeneLociMap(mapKey, chr);
+                         } catch (Exception e) {
+                             e.printStackTrace();
+                         }
+                       List<VariantMapData> vmdList=vdao.getVariants1(chr, mapKey, speciesTypeKey);
+                         System.out.println("VMD LSIT SIZE:" + vmdList.size());
+                        List<VariantSampleDetail> sampleDetails=vdao.getSamplesByChromosome(mapKey, chr);
+                        System.out.println("SAMPLES SIZE: "+ sampleDetails.size());
+                         List<VariantTranscript> transcripts=vdao.getVariantTranscriptsByChr(chr, mapKey);
+                       System.out.println("TRANSCRIPTS SIZE: "+ transcripts.size());
+                      /*   String tableName=getConScoreTable(mapKey,null);
+                         List<ConservationScore> conscores=vdao.getConservationScoresByChr(chr,tableName);
+                         System.out.println("CONSERVATION SCORES: "+ conscores.size());
+                       */ //  workerThread=new ProcessChromosome(chr, mapKey, samples,  bulkIndexProcessor, transcripts, geneLociMap);
+                    /*    workerThread=new ProcessChromosomeBKUP(chr, mapKey,speciesTypeKey, geneLociMap,vmdList,sampleDetails,
+                                  transcripts);*/
+                   /*      executor.execute(workerThread);
 
-                     }
+                     }*/
+                for(String  chr:chromosomes) {
+                    List<Integer> variantIds = vdao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
+                   System.out.println("UNIQUE VAIANTS SIZE of CHR:"+chr+":\t"+ variantIds.size());
+                    Collection[] collections = split(variantIds, 1000);
+                    for (int i = 0; i < collections.length; i++) {
+                      List<Integer> list= (List<Integer>) collections[i];
+                  //      for (Sample s : samples) {
+                           List<VariantIndex> indexList = null;
+                            try {
+                                indexList = vdao.getVariantsNewTbaleStructure(  mapKey, list);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                         //   workerThread = new ProcessPartChromosome(list,mapKey);
+                            workerThread = new ProcessPartChromosome(indexList);
+                            executor.execute(workerThread);
+
+                     //   }
+                    }
+                }
                 break;
             default:
                 break;
@@ -204,6 +241,19 @@ public class Manager {
         System.out.println(" - " + Utils.formatElapsedTime(start, end));
         log.info(" - " + Utils.formatElapsedTime(start, end));
         System.out.println("CLIENT IS CLOSED");
+    }
+    public Collection[] split(List<Integer> rgdids, int size) throws Exception {
+        int numOfBatches = rgdids.size() / size + 1;
+        Collection[] batches = new Collection[numOfBatches];
+
+        for(int index = 0; index < numOfBatches; ++index) {
+            int count = index + 1;
+            int fromIndex = Math.max((count - 1) * size, 0);
+            int toIndex = Math.min(count * size, rgdids.size());
+            batches[index] = rgdids.subList(fromIndex, toIndex);
+        }
+
+        return batches;
     }
 
     public List<VariantIndexObject> getIndexObjects(List<CommonFormat2Line> list, GeneCache geneCache){
@@ -562,7 +612,7 @@ public class Manager {
             list.add(g.getGeneSymbols());
             positionGeneMap.put(g.getPosition(), list);
         }
-        System.out.println("GeneLoci Map size: "+ positionGeneMap.size());
+        System.out.println("GeneLoci Map size of CHR-:"+ chromosome+"\t"+ positionGeneMap.size());
 
         return positionGeneMap;
     }
@@ -822,11 +872,25 @@ public class Manager {
         System.out.println("Finished all threads: " + new Date());
     }
 
-    public BulkProcessor getBulkProcessor() {
-        return bulkProcessor;
-    }
 
-    public void setBulkProcessor(BulkProcessor bulkProcessor) {
-        this.bulkProcessor = bulkProcessor;
+    public String getConScoreTable(int mapKey, String genicStatus ) {
+        switch(mapKey) {
+            case 17:
+                return " B37_CONSCORE_PART_IOT ";
+            case 38:
+                return " CONSERVATION_SCORE_HG38 ";
+            case 60:
+                if (genicStatus.equalsIgnoreCase("GENIC")) {
+                    return " CONSERVATION_SCORE_GENIC ";
+                }
+
+                return " CONSERVATION_SCORE ";
+            case 70:
+                return " CONSERVATION_SCORE_5 ";
+            case 360:
+                return " CONSERVATION_SCORE_6 ";
+            default:
+                return " CONSERVATION_SCORE_6 ";
+        }
     }
 }

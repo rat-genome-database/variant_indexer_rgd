@@ -3,6 +3,7 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.datamodel.GeneLoci;
 import edu.mcw.rgd.datamodel.Sample;
+import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
@@ -19,12 +20,20 @@ public class ProcessChromosome implements  Runnable{
     private String chr;
     private int mapKey;
     List<Sample> samples;
+    List<VariantTranscript> transcripts;
+    BulkIndexProcessor bulkIndexProcessor;
+    Map<Long, List<String>> geneLociMap;
     VariantDao vdao=new VariantDao();
 
-    public ProcessChromosome(String chr, int mapKey,List<Sample> samples ){
+    public ProcessChromosome(String chr, int mapKey,List<Sample> samples,  BulkIndexProcessor bulkIndexProcessor,
+                             List<VariantTranscript> transcripts,
+                             Map<Long, List<String>> geneLociMap){
         this.chr=chr;
         this.mapKey=mapKey;
         this.samples=samples;
+        this.transcripts=transcripts;
+        this.bulkIndexProcessor=bulkIndexProcessor;
+        this.geneLociMap=geneLociMap;
     }
     @Override
     public void run() {
@@ -32,12 +41,12 @@ public class ProcessChromosome implements  Runnable{
 
         ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Runnable workerThread=null;
-        Map<Long, List<String>> geneLociMap = null;
+      /*  Map<Long, List<String>> geneLociMap = null;
         try {
             geneLociMap = getGeneLociMap(mapKey, chr);
         } catch (Exception e) {
             e.printStackTrace();
-        }
+        }*/
         for (Sample s : samples) {
             List<VariantIndex> indexList = null;
             try {
@@ -45,7 +54,7 @@ public class ProcessChromosome implements  Runnable{
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            workerThread =new ProcessSample(indexList,geneLociMap,chr, s.getId());
+            workerThread =new ProcessSample(indexList,geneLociMap,chr, s.getId(),bulkIndexProcessor,transcripts);
             executor.execute(workerThread);
 
         }

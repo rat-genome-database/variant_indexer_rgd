@@ -2,8 +2,13 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.mcw.rgd.datamodel.variants.VariantMapData;
+import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
+import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
+import edu.mcw.rgd.variantIndexerRgd.model.Json;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
+import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
 import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
@@ -16,65 +21,62 @@ import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentType;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class BulkIndexer implements Runnable {
-    private List<VariantIndex> indexobjects;
-    public BulkIndexer(List<VariantIndex> indexobjects){
-        this.indexobjects=indexobjects;
+    private VariantIndex vi;
+    private VariantMapData vmd;
+    List<VariantSampleDetail> samples;
+    public BulkIndexer(VariantIndex vi, VariantMapData vamd, List<VariantSampleDetail> samples) {
+      this.vi=vi;
+      this.vmd=vamd;
+      this.samples=samples;
     }
+
     @Override
     public void run() {
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                (request, bulkListener) ->
-                        ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
-
-        for(VariantIndex object:indexobjects){
-            // System.out.println(object.getChromosome()+"\t"+object.getStartPos());
+        List<VariantSampleDetail> variantSamplesDetails = getSamples(vmd.getId(),samples);
+        for (VariantSampleDetail vsd : variantSamplesDetails) {
+            mapSampleDetails(vsd, vi);
             try {
-                ObjectMapper mapper=new ObjectMapper();
-                byte[] json =  mapper.writeValueAsBytes(object);
-                bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                byte[] json = Json.serializer().mapper().writeValueAsBytes(vi);
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+
+                //     bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
             }
         }
-        try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            bulkProcessor.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
-            bulkProcessor.close();
+    }
+    List<VariantSampleDetail> getSamples(long variantRgdId, List<VariantSampleDetail> samples){
+        List<VariantSampleDetail> sampleDetails=new ArrayList<>();
+        for(VariantSampleDetail vsd:samples){
+            try {
+                if (vsd.getId() == variantRgdId) {
+                    sampleDetails.add(vsd);
+                }
+            }catch (Exception e){
+                e.printStackTrace();
+            }
         }
+        return sampleDetails;
+    }
+    void mapSampleDetails(VariantSampleDetail vsd, VariantIndex vi){
+        vi.setSampleId(vsd.getSampleId());
+        vi.setAnalysisName(vsd.getAnalysisName());
+        vi.setZygosityInPseudo(vsd.getZygosityInPseudo());
+        vi.setZygosityNumAllele(vsd.getZygosityNumberAllele());
+        vi.setZygosityPercentRead(vsd.getZygosityPercentRead());
+        vi.setZygosityPossError(vsd.getZygosityPossibleError());
+        vi.setZygosityStatus(vsd.getZygosityStatus());
+        vi.setQualityScore(vsd.getQualityScore());
+        vi.setTotalDepth(vsd.getDepth());
+        vi.setVarFreq(vsd.getVariantFrequency());
 
     }
 }
