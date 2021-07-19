@@ -165,14 +165,14 @@ public class Manager {
             case 6:
                 System.out.println("Processing "+species+" variants...");
                 this.setMapKey(mapKey);
-                SampleDAO sampleDAO = new SampleDAO();
+           /*     SampleDAO sampleDAO = new SampleDAO();
                 sampleDAO.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
              List<Sample> samples=new ArrayList<>();
                 if(mapKey==17) {
                    samples.add(sampleDAO.getSample(1));
                 }else{
                     samples.addAll(sampleDAO.getSamplesByMapKey(mapKey));
-                }
+                }*/
                 System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
              /*        for(String  chr:chromosomes) {
                          //  chr="12";

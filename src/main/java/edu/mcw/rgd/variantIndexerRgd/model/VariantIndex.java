@@ -39,6 +39,15 @@ public class VariantIndex {
    private List<VariantTranscript> variantTranscripts;
    private List<String> conScores;
    private String dbsSnpName;
+   private String clinicalSignificance;
+
+    public String getClinicalSignificance() {
+        return clinicalSignificance;
+    }
+
+    public void setClinicalSignificance(String clinicalSignificance) {
+        this.clinicalSignificance = clinicalSignificance;
+    }
 
     public String getClinvarId() {
         return clinvarId;

@@ -3,10 +3,12 @@ package edu.mcw.rgd.variantIndexerRgd.dao;
 import edu.mcw.rgd.dao.AbstractDAO;
 import edu.mcw.rgd.dao.DataSourceFactory;
 
+import edu.mcw.rgd.dao.impl.VariantInfoDAO;
 import edu.mcw.rgd.dao.spring.ConservationScoreMapper;
 import edu.mcw.rgd.dao.spring.IntListQuery;
 import edu.mcw.rgd.dao.spring.variants.*;
 import edu.mcw.rgd.datamodel.ConservationScore;
+import edu.mcw.rgd.datamodel.VariantInfo;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
@@ -28,6 +30,7 @@ import java.util.stream.Collectors;
  * Created by jthota on 1/16/2020.
  */
 public class VariantDao extends AbstractDAO {
+    VariantInfoDAO variantInfoDAO=new VariantInfoDAO();
     public VariantIndexObject mapSamplesNTranscripts(List<VariantData> records, VariantIndexObject indexObject){
         List<VariantSampleDetail> sampleDetails= new ArrayList<>();
         sampleDetails=indexObject.getSamples();
@@ -344,17 +347,23 @@ public class VariantDao extends AbstractDAO {
               " from variant v " +
               " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
               " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " +
-              " left outer join variant_transcript vt on v.rgd_id=vt.variant_rgd_id  " +
-              " left outer join polyphen  p on (v.rgd_id =p.variant_rgd_id)   " +
+              " left outer join variant_transcript vt on ( v.rgd_id=vt.variant_rgd_id )  " +
+              " left outer join polyphen  p on (vt.variant_rgd_id =p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)   " +
               " left outer join"+ csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)     " +
-              "  left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
+              " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
               "   where  " +
               "                v.rgd_id in (" ;
            //   "63409322)";
        String ids=  variantIdsList.stream().map(Object::toString).collect(Collectors.joining(","));
        sql=sql+ids;
-       sql=sql+")";
-  //     System.out.println(sql);
+       sql=sql+") ";
+       if(mapKey==38 || mapKey==17){
+           sql=sql+ " and vsd.sample_id in (select sample_id from sample where map_key=?)" +
+                   " and vt.map_key=? " +
+                   " and vmd.map_key=?";
+       }
+
+
         List<VariantIndex> vrList = new ArrayList<>();
         java.util.Map<String, VariantIndex> variants= new HashMap<>();
         Set<String> variantIds= new HashSet<>();
@@ -364,15 +373,20 @@ public class VariantDao extends AbstractDAO {
         try{
             connection= DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
             stmt=connection.prepareStatement(sql);
+            stmt.setInt(1, mapKey);
+            stmt.setInt(2, mapKey);
+            stmt.setInt(3, mapKey);
+
             rs=  stmt.executeQuery();
             while(rs.next()) {
                 try {
                     VariantIndex vi = new VariantIndex();
                     long variant_id = rs.getLong("rgd_id");
                     int sample_id=rs.getInt("sample_id");
-                    String key=variant_id+"-"+sample_id;
+                    String key=variant_id+"-"+sample_id+"-"+mapKey;
                     if (!variantIds.contains(key)) {
                         variantIds.add(key);
+
                         vi.setVariant_id(variant_id);
                         vi.setChromosome(rs.getString("chromosome"));
                         vi.setPaddingBase(rs.getString("padding_base"));
@@ -418,12 +432,20 @@ public class VariantDao extends AbstractDAO {
                         /******************region_name*******************/
                         String regionName=rs.getString("region_name");
                         List<String> regionNames=new ArrayList<>();
-                        regionNames.add(regionName);
-                        vi.setRegionName(regionNames);
-                        vi.setRegionNameLc(Arrays.asList(regionName.toLowerCase()));
+                        if(regionName!=null) {
+                            regionNames.add(regionName);
+                            vi.setRegionName(regionNames);
+
+                            vi.setRegionNameLc(Arrays.asList(regionName.toLowerCase()));
+                        };
                         List<String> conScores = new ArrayList<>();
                         conScores.add(rs.getString("score"));
                         vi.setConScores(conScores);
+                        if(mapKey==38 || mapKey==17){
+                            String clinvarSignificance=getClinvarInfo((int) variant_id);
+                            if(clinvarSignificance!=null && !clinvarSignificance.equals(""))
+                           vi.setClinicalSignificance(clinvarSignificance);
+                        }
                         variants.put(key, vi);
 
                     } else {
@@ -736,5 +758,9 @@ public class VariantDao extends AbstractDAO {
         vt.setSynStatus(v.getSynStatus());
         vt.setPolyphenStatus(v.getPolyphenPrediction());
         return vt;
+    }
+    public String getClinvarInfo(int variantRgdId) throws Exception {
+        VariantInfo info=variantInfoDAO.getVariant(variantRgdId)  ;
+        return  info.getClinicalSignificance();
     }
 }
