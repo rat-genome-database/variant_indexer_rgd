@@ -224,7 +224,7 @@ public class VariantDao extends AbstractDAO {
             case 360:
                 return " CONSERVATION_SCORE_6 ";
             default:
-                return " CONSERVATION_SCORE_6 ";
+                return "";
         }
     }
     public List<VariantMapData> getVariants1( String chr, int mapKey, int speciesTypeKey) throws Exception {
@@ -343,14 +343,24 @@ public class VariantDao extends AbstractDAO {
      public List<VariantIndex> getVariantsNewTbaleStructure(  int mapKey, List<Integer> variantIdsList) throws Exception {
 
         String csTable=getConScoreTable(mapKey,null);
-      String sql="select v.*,vmd.*, vsd.*,vt.*, p.prediction,cs.score ,gl.gene_symbols as region_name " +
-              " from variant v " +
+      String sql="select v.*,vmd.*, vsd.*,vt.*, p.prediction,cs.score ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
+              " g.gene_symbol_lc as gene_symbol_lc, md.strand as strand " ;
+      if(!csTable.equalsIgnoreCase("")){
+          sql+=" cs.score ";
+      }
+        sql+=      " from variant v " +
               " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
               " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " +
               " left outer join variant_transcript vt on ( v.rgd_id=vt.variant_rgd_id )  " +
-              " left outer join polyphen  p on (vt.variant_rgd_id =p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)   " +
-              " left outer join"+ csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)     " +
-              " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
+              " left outer join transcripts t on (t.transcript_rgd_id=vt.transcript_rgd_id) " +
+              "               left outer join genes g on (g.rgd_id=t.gene_rgd_id) " +
+              "               left outer join maps_data md on ( md.rgd_id=g.rgd_id and md.map_key=vmd.map_key) " +
+
+              " left outer join polyphen  p on (vt.variant_rgd_id =p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)   " ;
+      if(!csTable.equalsIgnoreCase("")) {
+        sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)     ";
+      }
+        sql+=      " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
               "   where  " +
               "                v.rgd_id in (" ;
            //   "63409322)";
@@ -373,10 +383,11 @@ public class VariantDao extends AbstractDAO {
         try{
             connection= DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
             stmt=connection.prepareStatement(sql);
-            stmt.setInt(1, mapKey);
-            stmt.setInt(2, mapKey);
-            stmt.setInt(3, mapKey);
-
+            if(mapKey==38 || mapKey==17) {
+                stmt.setInt(1, mapKey);
+                stmt.setInt(2, mapKey);
+                stmt.setInt(3, mapKey);
+            }
             rs=  stmt.executeQuery();
             while(rs.next()) {
                 try {
@@ -438,6 +449,9 @@ public class VariantDao extends AbstractDAO {
 
                             vi.setRegionNameLc(Arrays.asList(regionName.toLowerCase()));
                         };
+                        vi.setGeneRgdId(rs.getInt("gene_rgd_id"));
+                        vi.setStrand(rs.getString("strand"));
+                        vi.setGeneSymbol(rs.getString("gene_symbol_lc"));
                         List<String> conScores = new ArrayList<>();
                         conScores.add(rs.getString("score"));
                         vi.setConScores(conScores);

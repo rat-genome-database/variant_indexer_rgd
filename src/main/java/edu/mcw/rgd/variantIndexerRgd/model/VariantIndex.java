@@ -40,6 +40,33 @@ public class VariantIndex {
    private List<String> conScores;
    private String dbsSnpName;
    private String clinicalSignificance;
+    private String strand;
+    private int geneRgdId;
+    private String geneSymbol;
+
+    public String getStrand() {
+        return strand;
+    }
+
+    public void setStrand(String strand) {
+        this.strand = strand;
+    }
+
+    public int getGeneRgdId() {
+        return geneRgdId;
+    }
+
+    public void setGeneRgdId(int geneRgdId) {
+        this.geneRgdId = geneRgdId;
+    }
+
+    public String getGeneSymbol() {
+        return geneSymbol;
+    }
+
+    public void setGeneSymbol(String geneSymbol) {
+        this.geneSymbol = geneSymbol;
+    }
 
     public String getClinicalSignificance() {
         return clinicalSignificance;

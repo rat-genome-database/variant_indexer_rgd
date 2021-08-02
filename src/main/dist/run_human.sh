@@ -6,7 +6,7 @@ SPECIESTYPEKEY=$3
 
 $APPDIR/run.sh reindex $ENV variants $SPECIESTYPEKEY $MAPKEY X
 
-for chr in {1..23..1}
+for chr in {1..1..1}
 do
 
         echo $chr
