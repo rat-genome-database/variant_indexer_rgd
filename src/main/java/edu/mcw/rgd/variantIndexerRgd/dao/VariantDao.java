@@ -343,9 +343,10 @@ public class VariantDao extends AbstractDAO {
     public List<VariantIndex> getVariantsNewTbaleStructure(  int mapKey, List<Integer> variantIdsList) throws Exception {
 
         String csTable=getConScoreTable(mapKey,null);
-        String sql="select v.*,vmd.*, vsd.*,vt.*, p.prediction,cs.score ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
+        String sql="select v.*,vmd.*, vsd.*,vt.*, p.prediction ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
                 " g.gene_symbol_lc as gene_symbol_lc, md.strand as strand " ;
-        if(!csTable.equalsIgnoreCase("")){
+
+        if(!csTable.equals("")){
             sql+=" , cs.score ";
         }
         sql+=   " from variant v " +
@@ -356,7 +357,7 @@ public class VariantDao extends AbstractDAO {
                 " left outer join genes g on (g.rgd_id=t.gene_rgd_id) " +
                 " left outer join maps_data md on ( md.rgd_id=g.rgd_id and md.map_key=vmd.map_key) " +
                 " left outer join polyphen  p on (vt.variant_rgd_id =p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)   " ;
-        if(!csTable.equalsIgnoreCase("")) {
+        if(!csTable.equals("")) {
             sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)     ";
         }
         sql+=   " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
@@ -442,14 +443,14 @@ public class VariantDao extends AbstractDAO {
     public List<VariantIndex> getVariantsWithoutTranscripts(int mapKey,Set<Long> variantIdsWithoutTranscripts) throws Exception {
         String csTable=getConScoreTable(mapKey,null);
         String sql="select v.*,vmd.*, vsd.*, cs.score ,gl.gene_symbols as region_name " ;
-        if(!csTable.equalsIgnoreCase("")){
+        if(!csTable.equals("")){
             sql+=" , cs.score ";
         }
         sql+=   " from variant v " +
                 " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
                 " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " ;
 
-        if(!csTable.equalsIgnoreCase("")) {
+        if(!csTable.equals("")) {
             sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome) ";
         }
         sql+=   " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos) " +
