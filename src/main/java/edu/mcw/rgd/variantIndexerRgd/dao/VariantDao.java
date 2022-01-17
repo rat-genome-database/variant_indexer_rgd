@@ -43,31 +43,31 @@ public class VariantDao extends AbstractDAO {
             vts=new ArrayList<>();
         }
         for(VariantData r: records){
-                    boolean existsSample = false;
-                    for (VariantSampleDetail s : sampleDetails) {
-                        if (s.getSampleId() == r.getSampleId()) {
-                            existsSample = true;
-                        }
-                    }
-                    if (!existsSample) {
-                        sampleDetails.add(this.mapSampleDetails(r));
+            boolean existsSample = false;
+            for (VariantSampleDetail s : sampleDetails) {
+                if (s.getSampleId() == r.getSampleId()) {
+                    existsSample = true;
+                }
+            }
+            if (!existsSample) {
+                sampleDetails.add(this.mapSampleDetails(r));
 
-                    }
+            }
 
-                /*********************add VARIANT TRANSCRIPTS*****************/
+            /*********************add VARIANT TRANSCRIPTS*****************/
 
-                    boolean existsTranscript=false;
-                    for(VariantTranscript vt:vts){
-                        if(vt.getTranscriptRgdId()==r.getTranscriptRgdId()){
-                            existsTranscript=true;
-                        }
-                    }
-                    if(!existsTranscript){
-                        VariantTranscript vt=this.mapVariantTranscript(r);
-                        vts.add(vt);
+            boolean existsTranscript=false;
+            for(VariantTranscript vt:vts){
+                if(vt.getTranscriptRgdId()==r.getTranscriptRgdId()){
+                    existsTranscript=true;
+                }
+            }
+            if(!existsTranscript){
+                VariantTranscript vt=this.mapVariantTranscript(r);
+                vts.add(vt);
 
 
-                    }
+            }
 
 
         }
@@ -125,11 +125,11 @@ public class VariantDao extends AbstractDAO {
         return q.execute(rgdId);
     }
 
-   /* public List<VariantSampleDetail> getSamples(long rgdId) throws Exception {
-        String sql="select * from variant_sample_detail where rgd_id=?";
-        VariantSampleQuery q=new VariantSampleQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(),sql);
-        return execute(q,rgdId);
-    }*/
+    /* public List<VariantSampleDetail> getSamples(long rgdId) throws Exception {
+         String sql="select * from variant_sample_detail where rgd_id=?";
+         VariantSampleQuery q=new VariantSampleQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(),sql);
+         return execute(q,rgdId);
+     }*/
     public List<VariantSampleDetail> getSamples(long rgdId) throws Exception {
         String sql="select * from variant_sample_detail where rgd_id=?";
         VariantSampleQuery q=new VariantSampleQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(),sql);
@@ -155,7 +155,7 @@ public class VariantDao extends AbstractDAO {
             }
         }
         sql.append(")");
-    //    System.out.println("SQL:"+ sql.toString());
+        //    System.out.println("SQL:"+ sql.toString());
         VariantSampleQuery q=new VariantSampleQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql.toString());
         return q.execute();
     }
@@ -201,9 +201,9 @@ public class VariantDao extends AbstractDAO {
                 "                               and vmd.chromosome=?" +
                 "                              and vmd.map_key=? " +
                 "                               and vsd.sample_id=?" +
-           //     "                              and v.rgd_id=?" +
+                //     "                              and v.rgd_id=?" +
                 "                             ";  //Total RECORD COUNT: 1888283; chr:1; map_key:360
-      //  VariantMapQuery q=new VariantMapQuery(DataSourceFactory.getInstance().getDataSource("Variant"), sql);
+        //  VariantMapQuery q=new VariantMapQuery(DataSourceFactory.getInstance().getDataSource("Variant"), sql);
         VariantQuery q=new VariantQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
         return execute(q,speciesTypeKey,chr,mapKey,sampleId);
     }
@@ -316,8 +316,8 @@ public class VariantDao extends AbstractDAO {
                     vi.setZygosityNumAllele(rs.getInt("zygosity_num_allele"));
                     vi.setZygosityInPseudo(rs.getString("zygosity_in_pseudo"));
                     vi.setQualityScore(rs.getInt("quality_score"));
-                  //  vi.setHGVSNAME(rs.getString("hgvs_name"));
-                 //   vi.setAnalysisName(rs.getString("analysis_name"));
+                    //  vi.setHGVSNAME(rs.getString("hgvs_name"));
+                    //   vi.setAnalysisName(rs.getString("analysis_name"));
                     vi.setMapKey(mapKey);
                     indexObjects.add(vi);
                 } catch (Exception e) {
@@ -340,202 +340,133 @@ public class VariantDao extends AbstractDAO {
         }
         return indexObjects;
     }
-     public List<VariantIndex> getVariantsNewTbaleStructure(  int mapKey, List<Integer> variantIdsList) throws Exception {
+    public List<VariantIndex> getVariantsNewTbaleStructure(  int mapKey, List<Integer> variantIdsList) throws Exception {
 
         String csTable=getConScoreTable(mapKey,null);
-      String sql="select v.*,vmd.*, vsd.*,vt.*, p.prediction,cs.score ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
-              " g.gene_symbol_lc as gene_symbol_lc, md.strand as strand " ;
-      if(!csTable.equalsIgnoreCase("")){
-          sql+=" cs.score ";
-      }
-        sql+=      " from variant v " +
-              " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
-              " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " +
-              " left outer join variant_transcript vt on ( v.rgd_id=vt.variant_rgd_id )  " +
-              " left outer join transcripts t on (t.transcript_rgd_id=vt.transcript_rgd_id) " +
-              "               left outer join genes g on (g.rgd_id=t.gene_rgd_id) " +
-              "               left outer join maps_data md on ( md.rgd_id=g.rgd_id and md.map_key=vmd.map_key) " +
+        String sql="select v.*,vmd.*, vsd.*,vt.*, p.prediction,cs.score ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
+                " g.gene_symbol_lc as gene_symbol_lc, md.strand as strand " ;
+        if(!csTable.equalsIgnoreCase("")){
+            sql+=" , cs.score ";
+        }
+        sql+=   " from variant v " +
+                " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
+                " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " +
+                " left outer join variant_transcript vt on ( v.rgd_id=vt.variant_rgd_id )  " +
+                " left outer join transcripts t on (t.transcript_rgd_id=vt.transcript_rgd_id) " +
+                " left outer join genes g on (g.rgd_id=t.gene_rgd_id) " +
+                " left outer join maps_data md on ( md.rgd_id=g.rgd_id and md.map_key=vmd.map_key) " +
+                " left outer join polyphen  p on (vt.variant_rgd_id =p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)   " ;
+        if(!csTable.equalsIgnoreCase("")) {
+            sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)     ";
+        }
+        sql+=   " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
+                " where  " +
+                " v.rgd_id in (" ;
+        //   "63409322)";
+        String ids=  variantIdsList.stream().map(Object::toString).collect(Collectors.joining(","));
+        sql=sql+ids;
+        sql=sql+") ";
 
-              " left outer join polyphen  p on (vt.variant_rgd_id =p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)   " ;
-      if(!csTable.equalsIgnoreCase("")) {
-        sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)     ";
-      }
-        sql+=      " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
-              "   where  " +
-              "                v.rgd_id in (" ;
-           //   "63409322)";
-       String ids=  variantIdsList.stream().map(Object::toString).collect(Collectors.joining(","));
-       sql=sql+ids;
-       sql=sql+") ";
-       if(mapKey==38 || mapKey==17){
-           sql=sql+ " and vsd.sample_id in (select sample_id from sample where map_key=?)" +
-                   " and vt.map_key=? " +
-                   " and vmd.map_key=?";
-       }
+        sql=sql+ " and vsd.sample_id in (select sample_id from sample where map_key=?) "+
+                " and vt.map_key=? " +
+                " and vmd.map_key=?";
 
-
-        List<VariantIndex> vrList = new ArrayList<>();
-        java.util.Map<String, VariantIndex> variants= new HashMap<>();
-        Set<String> variantIds= new HashSet<>();
-        ResultSet rs= null;
-        Connection connection= null;
-        PreparedStatement stmt=null;
-        try{
-            connection= DataSourceFactory.getInstance().getCarpeNovoDataSource().getConnection();
-            stmt=connection.prepareStatement(sql);
-            if(mapKey==38 || mapKey==17) {
-                stmt.setInt(1, mapKey);
-                stmt.setInt(2, mapKey);
-                stmt.setInt(3, mapKey);
-            }
-            rs=  stmt.executeQuery();
-            while(rs.next()) {
+        VariantIndexQuery query=new VariantIndexQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
+        List<VariantIndex> variants=  execute(query, mapKey, mapKey,mapKey);
+        List<VariantIndex> vrList=new ArrayList<>();
+        Set<String> variantIds=new HashSet<>();
+        java.util.Map<String, VariantIndex>  sortedVariants=new HashMap<>();
+        Set<Long> variantIdsWithTrancripts=new HashSet<>();
+        for(VariantIndex variant:variants){
+            variantIdsWithTrancripts.add(variant.getVariant_id());
+            String key=variant.getVariant_id()+"-"+variant.getSampleId()+"-"+variant.getMapKey();
+            if(mapKey==38 || mapKey==17){
                 try {
-                    VariantIndex vi = new VariantIndex();
-                    long variant_id = rs.getLong("rgd_id");
-                    int sample_id=rs.getInt("sample_id");
-                    String key=variant_id+"-"+sample_id+"-"+mapKey;
-                    if (!variantIds.contains(key)) {
-                        variantIds.add(key);
-
-                        vi.setVariant_id(variant_id);
-                        vi.setChromosome(rs.getString("chromosome"));
-                        vi.setPaddingBase(rs.getString("padding_base"));
-                        vi.setEndPos(rs.getLong("end_pos"));
-                        vi.setRefNuc(rs.getString("ref_nuc"));
-                        vi.setSampleId(rs.getInt("sample_id"));
-                        vi.setStartPos(rs.getLong("start_pos"));
-                        vi.setTotalDepth(rs.getInt("total_depth"));
-                        vi.setVarFreq(rs.getInt("var_freq"));
-                        vi.setVariantType(rs.getString("variant_type"));
-                        vi.setVarNuc(rs.getString("var_nuc"));
-                        vi.setZygosityStatus(rs.getString("zygosity_status"));
-                        vi.setGenicStatus(rs.getString("genic_status"));
-                        vi.setZygosityPercentRead(rs.getDouble("zygosity_percent_read"));
-                        vi.setZygosityPossError(rs.getString("zygosity_poss_error"));
-                        vi.setZygosityRefAllele(rs.getString("zygosity_ref_allele"));
-                        vi.setZygosityNumAllele(rs.getInt("zygosity_num_allele"));
-                        vi.setZygosityInPseudo(rs.getString("zygosity_in_pseudo"));
-                        vi.setQualityScore(rs.getInt("quality_score"));
-                     //   vi.setHGVSNAME(rs.getString("hgvs_name"));
-                     //  vi.setAnalysisName(rs.getString("analysis_name"));
-
-                        vi.setMapKey(mapKey);
-
-                        /***************Variant Transcript****************************/
-                         List<VariantTranscript> vts= new ArrayList<>();
-                        VariantTranscript vt=new VariantTranscript();
-
-                        vt.setTranscriptRgdId(rs.getInt("transcript_rgd_id"));
-                        vt.setRefAA(rs.getString("ref_aa"));
-                        vt.setVarAA(rs.getString("var_aa"));
-                        vt.setPolyphenStatus(rs.getString("prediction"));
-                        vt.setSynStatus(rs.getString("syn_status"));
-                        vt.setLocationName(rs.getString("location_name"));
-                        vt.setNearSpliceSite(rs.getString("near_splice_site"));
-
-                        vt.setTripletError(rs.getString("triplet_error"));
-                        vt.setFrameShift(rs.getString("frameshift"));
-                        vts.add(vt);
-                        vi.setVariantTranscripts(vts);
-                        /*****************polyphen******************/
-
-                        /******************region_name*******************/
-                        String regionName=rs.getString("region_name");
-                        List<String> regionNames=new ArrayList<>();
-                        if(regionName!=null) {
-                            regionNames.add(regionName);
-                            vi.setRegionName(regionNames);
-
-                            vi.setRegionNameLc(Arrays.asList(regionName.toLowerCase()));
-                        };
-                        vi.setGeneRgdId(rs.getInt("gene_rgd_id"));
-                        vi.setStrand(rs.getString("strand"));
-                        vi.setGeneSymbol(rs.getString("gene_symbol_lc"));
-                        List<String> conScores = new ArrayList<>();
-                        conScores.add(rs.getString("score"));
-                        vi.setConScores(conScores);
-                        if(mapKey==38 || mapKey==17){
-                            String clinvarSignificance=getClinvarInfo((int) variant_id);
-                            if(clinvarSignificance!=null && !clinvarSignificance.equals(""))
-                           vi.setClinicalSignificance(clinvarSignificance);
-                        }
-                        variants.put(key, vi);
-
-                    } else {
-                        VariantIndex obj = variants.get(key);
-
-                        long vtId=rs.getLong("transcript_rgd_id");
-                        List<VariantTranscript>vtranscripts=new ArrayList<>();
-                        boolean exists = false;
-
-                        if(obj!=null) {
-                            vtranscripts = obj.getVariantTranscripts();
-                            for (VariantTranscript variantTranscript : vtranscripts) {
-                                if (vtId == variantTranscript.getTranscriptRgdId()) {
-                                    exists = true;
-                                }
-                            }
-                        }
-                        if(!exists) {
-                            VariantTranscript vt = new VariantTranscript();
-
-                            vt.setTranscriptRgdId(rs.getInt("transcript_rgd_id"));
-                            vt.setRefAA(rs.getString("ref_aa"));
-                            vt.setVarAA(rs.getString("var_aa"));
-                            vt.setPolyphenStatus(rs.getString("prediction"));
-                            vt.setSynStatus(rs.getString("syn_status"));
-                            vt.setLocationName(rs.getString("location_name"));
-                            vt.setNearSpliceSite(rs.getString("near_splice_site"));
-                            vt.setTripletError(rs.getString("triplet_error"));
-                            vt.setFrameShift(rs.getString("frameshift"));
-
-                            vtranscripts.add(vt);
-                            vi.setVariantTranscripts(vtranscripts);
-                        }
-                        variants.put(key, obj);
-                    }
+                    String clinvarSignificance = getClinvarInfo((int) variant.getVariant_id());
+                    if (clinvarSignificance != null && !clinvarSignificance.equals(""))
+                        variant.setClinicalSignificance(clinvarSignificance);
                 }catch (Exception e){
-
-                    e.printStackTrace();
+                    System.out.println("NO CLINICAL SIGNIFICACE SAMPLE_ID:"+ variant.getSampleId() +" RGD_ID:"+variant.getVariant_id());
                 }
             }
+            if(!variantIds.contains(key)){
+                variantIds.add(key);
+                sortedVariants.put(key,variant);
+            }else{
+                VariantIndex obj = sortedVariants.get(key);
+                List<VariantTranscript>vtranscripts=new ArrayList<>();
+                boolean exists = false;
+                if(variant.getVariantTranscripts()!=null)
+                for(VariantTranscript transcript:variant.getVariantTranscripts()) {
+                    if (obj != null) {
 
-            rs.close();
-            stmt.close();
-            connection.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            try {
-                if(rs!=null)
-                    rs.close();
-                if(stmt!=null)
-                    stmt.close();
-                if(connection!=null)
-                    connection.close();
-            } catch (SQLException ex) {
-                ex.printStackTrace();
+                        vtranscripts = obj.getVariantTranscripts();
+                        for (VariantTranscript variantTranscript : vtranscripts) {
+                            if (transcript.getTranscriptRgdId() == variantTranscript.getTranscriptRgdId()) {
+                                exists = true;
+                            }
+                        }
+                        if (!exists) {
+                            vtranscripts.add(transcript);
+                            obj.setVariantTranscripts(vtranscripts);
+                        }
+                    }
+                }
+                sortedVariants.put(key, obj);
             }
-
-        }finally {
-            try {
-                if(rs!=null)
-                    rs.close();
-                if(stmt!=null)
-                    stmt.close();
-                if(connection!=null)
-                    connection.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-
         }
-        for(Map.Entry e:variants.entrySet()){
+
+
+        for(Map.Entry e:sortedVariants.entrySet()){
             vrList.add((VariantIndex) e.getValue());
         }
-    //    System.out.println("varaiants size: "+ vrList.size());
+        System.out.println("varaiants size: "+ vrList.size());
+
+        Set<Long> variantIdsWithoutTranscripts=new HashSet<>();
+        if(variantIdsList.size()>variantIdsWithTrancripts.size()){
+            for(int id:variantIdsList){
+                if(!variantIdsWithTrancripts.contains((long)id)){
+                    variantIdsWithoutTranscripts.add((long) id);
+                }
+            }
+            System.out.println("Queried IDS:"+variantIdsList.size()+"\nIds without transcripts:"+ variantIdsWithoutTranscripts.size());
+            if(variantIdsWithoutTranscripts.size()>0) {
+                List<VariantIndex> variantsWithoutTranscripts = getVariantsWithoutTranscripts(mapKey, variantIdsWithoutTranscripts);
+                vrList.addAll(variantsWithoutTranscripts);
+            }
+        }
+        System.out.println("varaiants size include no transcript variants: "+ vrList.size());
         return vrList;
+    }
+
+    public List<VariantIndex> getVariantsWithoutTranscripts(int mapKey,Set<Long> variantIdsWithoutTranscripts) throws Exception {
+        String csTable=getConScoreTable(mapKey,null);
+        String sql="select v.*,vmd.*, vsd.*, cs.score ,gl.gene_symbols as region_name " ;
+        if(!csTable.equalsIgnoreCase("")){
+            sql+=" , cs.score ";
+        }
+        sql+=   " from variant v " +
+                " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
+                " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " ;
+
+        if(!csTable.equalsIgnoreCase("")) {
+            sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome) ";
+        }
+        sql+=   " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos) " +
+                " where  " +
+                " v.rgd_id in (" ;
+        //   "63409322)";
+        String ids=  variantIdsWithoutTranscripts.stream().map(Object::toString).collect(Collectors.joining(","));
+        sql=sql+ids;
+        sql=sql+") ";
+        sql=sql+ " and vsd.sample_id in (select sample_id from sample where map_key=?) "+
+                " and vmd.map_key=?";
+        System.out.println("SQL:"+sql);
+        VariantIndexQuery query=new VariantIndexQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
+
+        return execute(query,mapKey,mapKey);
+     //   return null;
+
     }
   /*  public List<VariantIndex> getVariantResults(int sampleId, String chr, int mapKey) {
         String variantTable=new String();
@@ -644,7 +575,7 @@ public class VariantDao extends AbstractDAO {
                         /*****************polyphen******************/
 
 //                        vi.setPolyphenPrediction(rs.getString("prediction"));
-                        /**************************dbs_snp****************************/
+    /**************************dbs_snp****************************/
  /*                   vi.setDbsSnpName(rs.getString("MCW_DBS_SNP_NAME"));
                         /******************region_name*******************/
  /*                    String regionName=rs.getString("region_name");
@@ -728,21 +659,21 @@ public class VariantDao extends AbstractDAO {
         System.out.println("varaiants size: "+ vrList.size());
         return vrList;
     }*/
-                        public VariantMapData mapVariant(VariantData r){
-                            VariantMapData v=new VariantMapData();
-                            v.setId(r.getVariantRgdId());
-                            v.setVariantNucleotide(r.getVarNuc());
-                            v.setReferenceNucleotide(r.getRefNuc());
-                            v.setVariantType(r.getVariantTpe());
-                            v.setRsId(r.getRsId());
-                            v.setChromosome(r.getChromosome());
-                            v.setStartPos(r.getStartPos());
-                            v.setEndPos(r.getEndPos());
-                            v.setGenicStatus(r.getGenicStatus());
-                            v.setPaddingBase(r.getPaddingBase());
-                            v.setMapKey(r.getMapKey());
-                            return v;
-                        }
+    public VariantMapData mapVariant(VariantData r){
+        VariantMapData v=new VariantMapData();
+        v.setId(r.getVariantRgdId());
+        v.setVariantNucleotide(r.getVarNuc());
+        v.setReferenceNucleotide(r.getRefNuc());
+        v.setVariantType(r.getVariantTpe());
+        v.setRsId(r.getRsId());
+        v.setChromosome(r.getChromosome());
+        v.setStartPos(r.getStartPos());
+        v.setEndPos(r.getEndPos());
+        v.setGenicStatus(r.getGenicStatus());
+        v.setPaddingBase(r.getPaddingBase());
+        v.setMapKey(r.getMapKey());
+        return v;
+    }
     public VariantSampleDetail mapSampleDetails(VariantData v){
         VariantSampleDetail s= new VariantSampleDetail();
         s.setSampleId(v.getSampleId());
