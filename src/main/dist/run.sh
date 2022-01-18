@@ -9,7 +9,7 @@ if [ "$SERVER" = "REED" ]; then
 fi
 cd $APPDIR
 pwd
-DB_OPTS="-Dspring.config=/home/rgddata/pipelines/properties/default_db.xml"
+DB_OPTS="-Dspring.config=/home/rgddata/pipelines/properties/reed.xml"
 LOG4J_OPTS="-Dlog4j.configuration=file://$APPDIR/properties/log4j.properties"
 export VARIANT_INDEXER_RGD_OPTS="$DB_OPTS $LOG4J_OPTS"
 bin/$APPNAME "$@" | tee run.log

@@ -205,17 +205,19 @@ public class Manager {
                     for (int i = 0; i < collections.length; i++) {
                       List<Integer> list= (List<Integer>) collections[i];
                   //      for (Sample s : samples) {
-                           List<VariantIndex> indexList = null;
+                           List<VariantIndex> indexList = new ArrayList<>();
                             try {
                                 indexList = vdao.getVariantsNewTbaleStructure(  mapKey, list);
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
                          //   workerThread = new ProcessPartChromosome(list,mapKey);
+                        if(indexList.size()>0) {
                             workerThread = new ProcessPartChromosome(indexList);
                             executor.execute(workerThread);
-
+                        }
                      //   }
+                    //    if(i>0) break;
                     }
                 }
                 break;

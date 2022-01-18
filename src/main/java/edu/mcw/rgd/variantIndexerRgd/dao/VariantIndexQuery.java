@@ -66,14 +66,17 @@ public class VariantIndexQuery extends MappingSqlQuery {
                     vi.setVariantTranscripts(vts);
             }}catch (Exception e){}
             /******************region_name*******************/
-            String regionName=rs.getString("region_name");
-            List<String> regionNames=new ArrayList<>();
-            if(regionName!=null) {
-                regionNames.add(regionName);
-                vi.setRegionName(regionNames);
+            try {
+                    String regionName = rs.getString("region_name");
+                    List<String> regionNames = new ArrayList<>();
+                    if (regionName != null) {
+                            regionNames.add(regionName);
+                            vi.setRegionName(regionNames);
 
-                vi.setRegionNameLc(Arrays.asList(regionName.toLowerCase()));
-            };
+                            vi.setRegionNameLc(Arrays.asList(regionName.toLowerCase()));
+                    }
+                    ;
+            }catch (Exception e){}
             try {
                     if(rs.getInt("gene_rgd_id")>0) {
                             vi.setGeneRgdId(rs.getInt("gene_rgd_id"));
@@ -82,8 +85,10 @@ public class VariantIndexQuery extends MappingSqlQuery {
                     }
             }catch (Exception e){}
             List<String> conScores = new ArrayList<>();
-            conScores.add(rs.getString("score"));
-            vi.setConScores(conScores);
+            try {
+                    conScores.add(rs.getString("score"));
+                    vi.setConScores(conScores);
+            }catch (Exception e){}
 
         return vi;
     }
