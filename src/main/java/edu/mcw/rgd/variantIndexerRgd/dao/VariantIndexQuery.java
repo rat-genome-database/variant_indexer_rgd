@@ -82,8 +82,10 @@ public class VariantIndexQuery extends MappingSqlQuery {
                     }
             }catch (Exception e){}
             List<String> conScores = new ArrayList<>();
-            conScores.add(rs.getString("score"));
-            vi.setConScores(conScores);
+            try {
+                    conScores.add(rs.getString("score"));
+                    vi.setConScores(conScores);
+            }catch (Exception e){}
 
         return vi;
     }
