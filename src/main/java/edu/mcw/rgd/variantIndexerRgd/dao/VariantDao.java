@@ -442,7 +442,7 @@ public class VariantDao extends AbstractDAO {
 
     public List<VariantIndex> getVariantsWithoutTranscripts(int mapKey,Set<Long> variantIdsWithoutTranscripts) throws Exception {
         String csTable=getConScoreTable(mapKey,null);
-        String sql="select v.*,vmd.*, vsd.*, cs.score ,gl.gene_symbols as region_name " ;
+        String sql="select v.*,vmd.*, vsd.* ,gl.gene_symbols as region_name " ;
         if(!csTable.equals("")){
             sql+=" , cs.score ";
         }
