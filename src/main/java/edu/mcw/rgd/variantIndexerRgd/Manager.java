@@ -153,8 +153,7 @@ public class Manager {
           admin.createIndex("", species);
         else  if(command.equalsIgnoreCase("update"))
             admin.updateIndex();
-        ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        Runnable workerThread= null;
+
         switch (speciesTypeKey) {
           /*  case 1:
                 processHumanVCF();
@@ -198,36 +197,53 @@ public class Manager {
                    /*      executor.execute(workerThread);
 
                      }*/
-                for(String  chr:chromosomes) {
-                    List<Integer> variantIds = vdao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
-                   System.out.println("UNIQUE VAIANTS SIZE of CHR:"+chr+":\t"+ variantIds.size());
-                    Collection[] collections = split(variantIds, 1000);
-                    for (int i = 0; i < collections.length; i++) {
-                      List<Integer> list= (List<Integer>) collections[i];
-                  //      for (Sample s : samples) {
-                           List<VariantIndex> indexList = new ArrayList<>();
-                            try {
-                                indexList = vdao.getVariantsNewTbaleStructure(  mapKey, list);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                         //   workerThread = new ProcessPartChromosome(list,mapKey);
-                        if(indexList.size()>0) {
-                            workerThread = new ProcessPartChromosome(indexList);
-                            executor.execute(workerThread);
-                        }
-                     //   }
-                    //    if(i>0) break;
-                    }
-                }
+                   if(chromosomes.size()==1) {
+                       ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+                       Runnable workerThread= null;
+                       for (String chr : chromosomes) {
+                           List<Integer> variantIds = vdao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
+                           System.out.println("UNIQUE VAIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
+                           Collection[] collections = split(variantIds, 1000);
+                           for (int i = 0; i < collections.length; i++) {
+                               List<Integer> list = (List<Integer>) collections[i];
+
+                               List<VariantIndex> indexList = new ArrayList<>();
+                               try {
+                                   indexList = vdao.getVariantsNewTbaleStructure(mapKey, list);
+                               } catch (Exception e) {
+                                   e.printStackTrace();
+                               }
+                               if (indexList.size() > 0) {
+                                   workerThread = new ProcessPartChromosome(indexList);
+                                   executor.execute(workerThread);
+                               }
+
+                           }
+                       }
+                       executor.shutdown();
+                       while (!executor.isTerminated()) {}
+                   }else{
+                       ExecutorService executor2 = new MyThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+                       Runnable chromosomeThread= null;
+                       for (String chr : chromosomes) {
+                           List<Integer> variantIds = vdao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
+                           System.out.println("UNIQUE VAIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
+                           Collection[] collections = split(variantIds, 1000);
+                           for (int i = 0; i < collections.length; i++) {
+                               chromosomeThread=new ChromosomeThread(mapKey, (List<Integer>) collections[i]);
+                               executor2.execute(chromosomeThread);
+                           }
+                       }
+                       executor2.shutdown();
+                       while (!executor2.isTerminated()) {}
+                   }
                 break;
             default:
                 break;
 
             }
 
-     executor.shutdown();
-        while (!executor.isTerminated()) {}
+
      String clusterStatus = this.getClusterHealth(RgdIndex.getNewAlias());
         if (!clusterStatus.equalsIgnoreCase("ok")) {
             System.out.println(clusterStatus + ", refusing to continue with operations");
