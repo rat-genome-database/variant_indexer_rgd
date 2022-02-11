@@ -22,24 +22,9 @@ public class ProcessPartChromosome implements  Runnable{
     public ProcessPartChromosome(List<VariantIndex> indexList){
         this.indexList=indexList;
     }
-    /*   private List<Integer> variantIdsList;
-       private int mapKey;
-       VariantDao vdao=new VariantDao();
-
-       public ProcessPartChromosome(List<Integer> variantIdsList, int mapKey){
-           this.variantIdsList=variantIdsList;
-           this.mapKey=mapKey;
-        }*/
     @Override
     public void run() {
-      /*  List<VariantIndex> indexList = new ArrayList<>();
-        try {
-            indexList = vdao.getVariantsNewTbaleStructure(  mapKey, variantIdsList);
-            System.out.println("INDEX LSIT SIZE:"+indexList.size());
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
         System.out.println("INDEX LSIT SIZE:"+indexList.size());
 
         for(VariantIndex vi:indexList) {
