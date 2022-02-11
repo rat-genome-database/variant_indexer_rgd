@@ -131,9 +131,9 @@ public class DetailsMapperNIndexer implements Runnable{
 */
         List<VariantTranscript> vts=new ArrayList<>();
         for(VariantTranscript vt:transcripts){
-            if(vt.getVariantId()== vmd.getId()){
+           /* if(vt.getVariantId()== vmd.getId()){
                 vts.add(vt);
-            }
+            }*/
         }
         vi.setVariantTranscripts(vts);
     }

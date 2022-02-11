@@ -90,9 +90,9 @@ public class ProcessSample  implements Runnable{
           vi.setVariantTranscripts(dao.getVariantTranscripts(vi.getVariant_id(), vi.getMapKey()));
         List<VariantTranscript> vts=new ArrayList<>();
         for(VariantTranscript vt:transcripts){
-            if(vt.getVariantId()== vi.getVariant_id()){
+           /* if(vt.getVariantId()== vi.getVariant_id()){
                 vts.add(vt);
-            }
+            }*/
         }
         vi.setVariantTranscripts(vts);
     }
