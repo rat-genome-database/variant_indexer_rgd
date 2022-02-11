@@ -28,7 +28,6 @@ import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 
-import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.client.RequestOptions;
 
@@ -197,7 +196,7 @@ public class Manager {
                    /*      executor.execute(workerThread);
 
                      }*/
-                   if(chromosomes.size()==1) {
+               /*    if(chromosomes.size()==1) {
                        ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        Runnable workerThread= null;
                        for (String chr : chromosomes) {
@@ -222,21 +221,16 @@ public class Manager {
                        }
                        executor.shutdown();
                        while (!executor.isTerminated()) {}
-                   }else{
-                       ExecutorService executor2 = new MyThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+                   }else{*/
+                       ExecutorService executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        Runnable chromosomeThread= null;
                        for (String chr : chromosomes) {
-                           List<Integer> variantIds = vdao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
-                           System.out.println("UNIQUE VAIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
-                           Collection[] collections = split(variantIds, 1000);
-                           for (int i = 0; i < collections.length; i++) {
-                               chromosomeThread=new ChromosomeThread(mapKey, (List<Integer>) collections[i]);
-                               executor2.execute(chromosomeThread);
-                           }
+                          chromosomeThread=new ChromosomeThread(chr, mapKey,speciesTypeKey);
+                          executor2.execute(chromosomeThread);
                        }
                        executor2.shutdown();
                        while (!executor2.isTerminated()) {}
-                   }
+                 //  }
                 break;
             default:
                 break;
