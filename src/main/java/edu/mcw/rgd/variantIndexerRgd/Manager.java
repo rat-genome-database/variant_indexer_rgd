@@ -197,7 +197,7 @@ public class Manager {
                    /*      executor.execute(workerThread);
 
                      }*/
-                   if(chromosomes.size()==1) {
+                /*   if(chromosomes.size()==1) {
                        ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        Runnable workerThread= null;
                        for (String chr : chromosomes) {
@@ -222,7 +222,7 @@ public class Manager {
                        }
                        executor.shutdown();
                        while (!executor.isTerminated()) {}
-                   }else{
+                   }else{*/
                        ExecutorService executor2 = new MyThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        Runnable chromosomeThread= null;
                        for (String chr : chromosomes) {
@@ -236,7 +236,7 @@ public class Manager {
                        }
                        executor2.shutdown();
                        while (!executor2.isTerminated()) {}
-                   }
+                 //  }
                 break;
             default:
                 break;
