@@ -21,13 +21,12 @@ public class VariantsNewTableThread implements Runnable{
     }
     @Override
     public void run() {
-        List<Integer> list = (List<Integer>) variantIds;
-        //      for (Sample s : samples) {
+
         ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Runnable workerThread= null;
         List<VariantIndex> indexList = new ArrayList<>();
         try {
-            indexList = variantDao.getVariantsNewTbaleStructure(mapKey, list);
+            indexList = variantDao.getVariantsNewTbaleStructure(mapKey, variantIds);
         } catch (Exception e) {
             e.printStackTrace();
         }
