@@ -48,7 +48,7 @@ public class VariantIndexQuery extends MappingSqlQuery {
 
             /***************Variant Transcript****************************/
             try{
-            if(rs.getInt("transcript_rgd_d")!=0) {
+            if(rs.getInt("transcript_rgd_id")!=0) {
                     List<VariantTranscript> vts = new ArrayList<>();
                     VariantTranscript vt = new VariantTranscript();
 

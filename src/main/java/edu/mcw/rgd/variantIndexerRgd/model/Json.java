@@ -21,6 +21,8 @@ public class Json {
         // Ignore null values when writing json.
         mapper.configure(SerializationFeature.WRITE_NULL_MAP_VALUES, false);
         mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+
 
         // Write times as a String instead of a Long so its human readable.
         mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
