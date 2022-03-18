@@ -21,7 +21,7 @@ public class VariantIndexQuery extends MappingSqlQuery {
     protected VariantIndex mapRow(ResultSet rs, int rowNum) throws SQLException {
 
             VariantIndex vi = new VariantIndex();
-
+            vi.setCategory("Variant");
             vi.setVariant_id(rs.getLong("rgd_id"));
             vi.setChromosome(rs.getString("chromosome"));
             vi.setPaddingBase(rs.getString("padding_base"));
@@ -48,7 +48,7 @@ public class VariantIndexQuery extends MappingSqlQuery {
 
             /***************Variant Transcript****************************/
             try{
-            if(rs.getInt("transcript_rgd_d")!=0) {
+            if(rs.getInt("transcript_rgd_id")!=0) {
                     List<VariantTranscript> vts = new ArrayList<>();
                     VariantTranscript vt = new VariantTranscript();
 

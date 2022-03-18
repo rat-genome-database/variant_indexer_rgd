@@ -9,6 +9,7 @@ import java.util.List;
  * Created by jthota on 11/15/2019.
  */
 public class VariantIndex {
+    private String category;
     private long variant_id;
     private String rsId;
     private String clinvarId;
@@ -43,6 +44,14 @@ public class VariantIndex {
     private String strand;
     private int geneRgdId;
     private String geneSymbol;
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
 
     public String getStrand() {
         return strand;
