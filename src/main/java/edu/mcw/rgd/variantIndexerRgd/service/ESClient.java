@@ -89,8 +89,9 @@ public class ESClient {
 
 
         try{
-   
-      fis=new FileInputStream("/data/pipelines/properties/es_properties.properties");
+    //  fis=new FileInputStream("C:/Apps/elasticsearchProps.properties");
+      fis=new FileInputStream("/Users/jthota/Documents/Apps/es_properties.properties");
+    //  fis=new FileInputStream("/data/pipelines/properties/es_properties.properties");
             props.load(fis);
 
         }catch (Exception e){
