@@ -161,67 +161,13 @@ public class Manager {
             case 3:
                 System.out.println("SPECIES: "+ speciesTypeKey);
             case 6:
+            case 9:
+            case 13:
                 System.out.println("Processing "+species+" variants...");
                 this.setMapKey(mapKey);
-           /*     SampleDAO sampleDAO = new SampleDAO();
-                sampleDAO.setDataSource(DataSourceFactory.getInstance().getCarpeNovoDataSource());
-             List<Sample> samples=new ArrayList<>();
-                if(mapKey==17) {
-                   samples.add(sampleDAO.getSample(1));
-                }else{
-                    samples.addAll(sampleDAO.getSamplesByMapKey(mapKey));
-                }*/
+
                 System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
-             /*        for(String  chr:chromosomes) {
-                         //  chr="12";
-                         System.out.println("Started CHROMOSOME:"+chr+".....");
-                         Map<Long, List<String>> geneLociMap = null;
-                         try {
-                             geneLociMap = getGeneLociMap(mapKey, chr);
-                         } catch (Exception e) {
-                             e.printStackTrace();
-                         }
-                       List<VariantMapData> vmdList=vdao.getVariants1(chr, mapKey, speciesTypeKey);
-                         System.out.println("VMD LSIT SIZE:" + vmdList.size());
-                        List<VariantSampleDetail> sampleDetails=vdao.getSamplesByChromosome(mapKey, chr);
-                        System.out.println("SAMPLES SIZE: "+ sampleDetails.size());
-                         List<VariantTranscript> transcripts=vdao.getVariantTranscriptsByChr(chr, mapKey);
-                       System.out.println("TRANSCRIPTS SIZE: "+ transcripts.size());
-                      /*   String tableName=getConScoreTable(mapKey,null);
-                         List<ConservationScore> conscores=vdao.getConservationScoresByChr(chr,tableName);
-                         System.out.println("CONSERVATION SCORES: "+ conscores.size());
-                       */ //  workerThread=new ProcessChromosome(chr, mapKey, samples,  bulkIndexProcessor, transcripts, geneLociMap);
-                    /*    workerThread=new ProcessChromosomeBKUP(chr, mapKey,speciesTypeKey, geneLociMap,vmdList,sampleDetails,
-                                  transcripts);*/
-                   /*      executor.execute(workerThread);
 
-                     }*/
-               /*    if(chromosomes.size()==1) {
-                       ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-                       Runnable workerThread= null;
-                       for (String chr : chromosomes) {
-                           List<Integer> variantIds = vdao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
-                           System.out.println("UNIQUE VAIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
-                           Collection[] collections = split(variantIds, 1000);
-                           for (int i = 0; i < collections.length; i++) {
-                               List<Integer> list = (List<Integer>) collections[i];
-
-                               List<VariantIndex> indexList = new ArrayList<>();
-                               try {
-                                   indexList = vdao.getVariantsNewTbaleStructure(mapKey, list);
-                               } catch (Exception e) {
-                                   e.printStackTrace();
-                               }
-                               if (indexList.size() > 0) {
-                                   workerThread = new ProcessPartChromosome(indexList);
-                                   executor.execute(workerThread);
-                               }
-
-                           }
-                       }
-                       executor.shutdown();
-                       while (!executor.isTerminated()) {}
-                   }else{*/
                        ExecutorService executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        Runnable chromosomeThread= null;
                        for (String chr : chromosomes) {
@@ -230,7 +176,7 @@ public class Manager {
                        }
                        executor2.shutdown();
                        while (!executor2.isTerminated()) {}
-                 //  }
+
                 break;
             default:
                 break;
