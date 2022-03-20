@@ -51,10 +51,8 @@ public class ESClient {
             Properties props= getProperties();
 
             try {
-              /*  client= new PreBuiltTransportClient(settings)
-                        .addTransportAddress(new TransportAddress(InetAddress.getByName("green.rgd.mcw.edu"), 9300));*/
+
                 client=new RestHighLevelClient(RestClient.builder(
-                  //   new HttpHost("travis.rgd.mcw.edu", 9200, "http")
                        new HttpHost(props.get("HOST1").toString(), 9200, "http"),
                         new HttpHost(props.get("HOST2").toString(), 9200, "http"),
                         new HttpHost(props.get("HOST3").toString(), 9200, "http"),
@@ -89,9 +87,8 @@ public class ESClient {
 
 
         try{
-    //  fis=new FileInputStream("C:/Apps/elasticsearchProps.properties");
-      fis=new FileInputStream("/Users/jthota/Documents/Apps/es_properties.properties");
-    //  fis=new FileInputStream("/data/pipelines/properties/es_properties.properties");
+
+     fis=new FileInputStream("/data/pipelines/properties/es_properties.properties");
             props.load(fis);
 
         }catch (Exception e){
