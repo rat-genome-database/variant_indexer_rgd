@@ -11,6 +11,8 @@ import org.elasticsearch.common.settings.Settings;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Properties;
 
 /**
@@ -51,26 +53,44 @@ public class ESClient {
             Properties props= getProperties();
 
             try {
+                if(getHostName().equalsIgnoreCase("apollo")
+               ||  getHostName().equalsIgnoreCase("booker")
+               || getHostName().equalsIgnoreCase("reed")) {
+                    client = new RestHighLevelClient(RestClient.builder(
+                            new HttpHost(props.get("HOST1").toString(), 9200, "http"),
+                            new HttpHost(props.get("HOST2").toString(), 9200, "http"),
+                            new HttpHost(props.get("HOST3").toString(), 9200, "http"),
+                            new HttpHost(props.get("HOST4").toString(), 9200, "http"),
+                            new HttpHost(props.get("HOST5").toString(), 9200, "http")
 
-                client=new RestHighLevelClient(RestClient.builder(
-                       new HttpHost(props.get("HOST1").toString(), 9200, "http"),
-                        new HttpHost(props.get("HOST2").toString(), 9200, "http"),
-                        new HttpHost(props.get("HOST3").toString(), 9200, "http"),
-                        new HttpHost(props.get("HOST4").toString(), 9200, "http"),
-                        new HttpHost(props.get("HOST5").toString(), 9200, "http")
 
+                    ).setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
 
-                ).setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback(){
+                        @Override
+                        public RequestConfig.Builder customizeRequestConfig(RequestConfig.Builder requestConfigBuilder) {
+                            return requestConfigBuilder
+                                    .setConnectTimeout(5000)
+                                    .setSocketTimeout(120000)
+                                    ;
+                        }
+                    })
+                    );
+                }else{
+                    client = new RestHighLevelClient(RestClient.builder(
+                            new HttpHost(props.get("travis.rgd.mcw.edu").toString(), 9200, "http")
 
-                    @Override
-                    public RequestConfig.Builder customizeRequestConfig(RequestConfig.Builder requestConfigBuilder) {
-                        return requestConfigBuilder
-                                .setConnectTimeout(5000)
-                                .setSocketTimeout(120000)
-                                ;
-                    }
-                })
-                );
+                    ).setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
+
+                        @Override
+                        public RequestConfig.Builder customizeRequestConfig(RequestConfig.Builder requestConfigBuilder) {
+                            return requestConfigBuilder
+                                    .setConnectTimeout(5000)
+                                    .setSocketTimeout(120000)
+                                    ;
+                        }
+                    })
+                    );
+                }
 
             } catch (Exception e) {
                 log.info(e);
@@ -102,5 +122,21 @@ public class ESClient {
             e.printStackTrace();
         }
         return props;
+    }
+    public static String getHostName(){
+        String hostname = "Unknown";
+
+        try
+        {
+            InetAddress addr;
+            addr = InetAddress.getLocalHost();
+            hostname = addr.getHostName();
+        }
+        catch (UnknownHostException ex)
+        {
+            System.out.println("Hostname can not be resolved");
+        }
+        System.out.println("hostname:"+hostname);
+        return hostname;
     }
 }
