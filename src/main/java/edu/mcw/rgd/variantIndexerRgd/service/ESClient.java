@@ -77,7 +77,7 @@ public class ESClient {
                     );
                 }else{
                     client = new RestHighLevelClient(RestClient.builder(
-                            new HttpHost(props.get("travis.rgd.mcw.edu").toString(), 9200, "http")
+                            new HttpHost("travis.rgd.mcw.edu", 9200, "http")
 
                     ).setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
 
