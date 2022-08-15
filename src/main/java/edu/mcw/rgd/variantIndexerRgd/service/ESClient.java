@@ -53,9 +53,9 @@ public class ESClient {
             Properties props= getProperties();
 
             try {
-                if(getHostName().equalsIgnoreCase("apollo")
-               ||  getHostName().equalsIgnoreCase("booker")
-               || getHostName().equalsIgnoreCase("reed")) {
+                if(getHostName().contains("apollo")
+               ||  getHostName().contains("booker")
+               || getHostName().contains("reed")) {
                     client = new RestHighLevelClient(RestClient.builder(
                             new HttpHost(props.get("HOST1").toString(), 9200, "http"),
                             new HttpHost(props.get("HOST2").toString(), 9200, "http"),
