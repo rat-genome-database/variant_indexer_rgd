@@ -119,7 +119,11 @@ public class Manager {
 
 
             }*/
-            String species= SpeciesType.getCommonName(manager.speciesTypeKey).toLowerCase();
+          String species= new String();
+          if( SpeciesType.getCommonName(manager.speciesTypeKey).contains(" "))
+              species=    SpeciesType.getCommonName(manager.speciesTypeKey).toLowerCase().replace(" ","");
+          else
+              species=    SpeciesType.getCommonName(manager.speciesTypeKey).toLowerCase();
             String index=manager.process+"_"+species+manager.mapKey;
 
             if (environments.contains(manager.env)) {
@@ -158,6 +162,7 @@ public class Manager {
                 processHumanVCF();
                 break;*/
             case 1:
+            case 2:
             case 3:
                 System.out.println("SPECIES: "+ speciesTypeKey);
             case 6:
