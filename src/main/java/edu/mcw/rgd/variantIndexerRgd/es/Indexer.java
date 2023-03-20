@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndexObject;
@@ -71,7 +72,7 @@ public class Indexer  {
                 }
             }
             try {
-                ESClient.getClient().bulk(request, RequestOptions.DEFAULT);
+                ClientInit.getClient().bulk(request, RequestOptions.DEFAULT);
                 request=new BulkRequest();
             } catch (IOException e) {
                 e.printStackTrace();

@@ -2,6 +2,7 @@ package edu.mcw.rgd.variantIndexerRgd;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 
@@ -21,6 +22,7 @@ import org.elasticsearch.xcontent.XContentType;
 
 import java.io.*;
 
+import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -73,7 +75,13 @@ public class VariantProcessThread implements Runnable {
         };
         BulkProcessor bulkProcessor = BulkProcessor.builder(
                 (request, bulkListener) ->
-                        ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+                {
+                    try {
+                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+                    } catch (UnknownHostException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
                 listener)
                 .setBulkActions(10000)
                 .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))

@@ -5,6 +5,7 @@ import edu.mcw.rgd.datamodel.Variant;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
 
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.util.Zygosity;
 import edu.mcw.rgd.variantIndexerRgd.VariantIndexerThread;
 
@@ -171,7 +172,7 @@ public class VariantProcessThreadNew implements Runnable {
                 com.fasterxml.jackson.databind.ObjectMapper mapper=new com.fasterxml.jackson.databind.ObjectMapper();
                 String json =  mapper.writeValueAsString(obj);
                 IndexRequest request= new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
-                ESClient.getClient().index(request, RequestOptions.DEFAULT);
+                ClientInit.getClient().index(request, RequestOptions.DEFAULT);
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -235,7 +236,7 @@ public class VariantProcessThreadNew implements Runnable {
         request.source(srb);
 
         //   RestHighLevelClient client=ESClient.getInstance();
-        SearchResponse sr=ESClient.getClient().search(request, RequestOptions.DEFAULT);
+        SearchResponse sr=ClientInit.getClient().search(request, RequestOptions.DEFAULT);
         List<VariantTranscript> tds= new ArrayList<>();
         for(SearchHit h:sr.getHits().getHits()){
             Map source=h.getSourceAsMap();

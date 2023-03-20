@@ -3,6 +3,7 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
@@ -18,6 +19,7 @@ import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.xcontent.XContentType;
 
 
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
@@ -81,7 +83,13 @@ public class Indexer implements Runnable{
         };
         BulkProcessor bulkProcessor = BulkProcessor.builder(
                 (request, bulkListener) ->
-                        ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+                {
+                    try {
+                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+                    } catch (UnknownHostException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
                 listener)
                 .setBulkActions(10000)
                 .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))

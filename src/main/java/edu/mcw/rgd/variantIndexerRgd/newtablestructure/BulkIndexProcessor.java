@@ -1,5 +1,6 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
+import edu.mcw.rgd.services.ClientInit;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -9,6 +10,7 @@ import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.core.TimeValue;
 
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 public class BulkIndexProcessor {
@@ -46,7 +48,13 @@ public class BulkIndexProcessor {
             };
            return BulkProcessor.builder(
                     (request, bulkListener) ->
-                            ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+                    {
+                        try {
+                            ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+                        } catch (UnknownHostException e) {
+                            throw new RuntimeException(e);
+                        }
+                    },
                     listener)
                     .setBulkActions(10000)
                     .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))

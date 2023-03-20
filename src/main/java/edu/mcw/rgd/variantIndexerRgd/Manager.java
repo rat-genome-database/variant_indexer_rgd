@@ -12,6 +12,7 @@ import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 
@@ -139,12 +140,12 @@ public class Manager {
         }catch (Exception e){
 
         manager.bulkIndexProcessor.destroy();
-          ESClient.destroy();
+          ClientInit.destroy();
             e.printStackTrace();
         }
         manager.bulkIndexProcessor.destroy();
 
-        ESClient.destroy();
+        ClientInit.destroy();
 
     }
 
@@ -519,7 +520,7 @@ public class Manager {
     public String getClusterHealth(String index) throws Exception {
 
         ClusterHealthRequest request = new ClusterHealthRequest(index);
-        ClusterHealthResponse response = ESClient.getClient().cluster().health(request, RequestOptions.DEFAULT);
+        ClusterHealthResponse response = ClientInit.getClient().cluster().health(request, RequestOptions.DEFAULT);
         System.out.println(response.getStatus().name());
    //     log.info("CLUSTER STATE: " + response.getStatus().name());
         if (response.isTimedOut()) {
@@ -556,7 +557,7 @@ public class Manager {
         //    log.info(rgdIndex.getIndex() + " pointed to " + RgdIndex.getNewAlias());
         }
         AcknowledgedResponse indicesAliasesResponse =
-                ESClient.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
+                ClientInit.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
 
         return  true;
 
