@@ -6,7 +6,6 @@ import edu.mcw.rgd.datamodel.Chromosome;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.variantIndexerRgd.model.CommonFormat2Line;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
-import org.apache.log4j.Logger;
 
 import java.util.*;
 

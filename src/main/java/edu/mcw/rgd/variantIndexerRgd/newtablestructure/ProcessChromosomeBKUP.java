@@ -4,63 +4,26 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
  * Created by jthota on 11/5/2020.
  */
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.VariantSampleMapping;
 import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.xcontent.XContentType;
 
-import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.dao.spring.ConservationScoreMapper;
 import edu.mcw.rgd.dao.spring.variants.Polyphen;
 import edu.mcw.rgd.datamodel.ConservationScore;
-import edu.mcw.rgd.datamodel.prediction.PolyPhenPrediction;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
-import edu.mcw.rgd.datamodel.variants.VariantObject;
-import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
-import edu.mcw.rgd.datamodel.variants.VariantTranscript;
-import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
-import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.*;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import static edu.mcw.rgd.variantIndexerRgd.Manager.getGeneLociMap;
 
 public class ProcessChromosomeBKUP implements Runnable {
     private String chr;

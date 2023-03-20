@@ -11,44 +11,29 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.11'
-    compile fileTree(dir: 'lib', include: '*.jar')
-    //  compile group: 'org.elasticsearch', name: 'elasticsearch', version: '6.4.0'
-    // https://mvnrepository.com/artifact/org.elasticsearch/elasticsearch
-    compile group: 'org.elasticsearch', name: 'elasticsearch', version: '7.1.0'
+    testImplementation group: 'junit', name: 'junit', version: '4.11'
+    implementation fileTree(dir: 'lib', include: '*.jar')
+    implementation group: 'org.elasticsearch', name: 'elasticsearch', version: '7.17.4'
+    implementation group: 'org.elasticsearch.client', name: 'transport', version: '7.17.4'
+    implementation group: 'org.elasticsearch.client', name: 'elasticsearch-rest-client', version: '7.17.4'
+    implementation group: 'org.elasticsearch.client', name: 'elasticsearch-rest-high-level-client', version: '7.17.4'
+    implementation group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
 
-    //   compile group: 'org.elasticsearch.client', name: 'transport', version: '6.4.0'
-    // https://mvnrepository.com/artifact/org.elasticsearch.client/transport
-    compile group: 'org.elasticsearch.client', name: 'transport', version: '7.1.0'
-// https://mvnrepository.com/artifact/org.elasticsearch.client/elasticsearch-rest-client
-    compile group: 'org.elasticsearch.client', name: 'elasticsearch-rest-client', version: '7.1.0'
+    implementation 'commons-dbcp:commons-dbcp:1.4'
+    implementation group: 'commons-logging', name: 'commons-logging', version: '1.2'
+    implementation group: 'commons-lang', name: 'commons-lang', version: '2.6'
+    implementation 'org.apache.logging.log4j:log4j-api:2.19.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.9.7'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.7'
 
-// https://mvnrepository.com/artifact/org.elasticsearch.client/elasticsearch-rest-high-level-client
-    compile group: 'org.elasticsearch.client', name: 'elasticsearch-rest-high-level-client', version: '7.1.0'
-
-    //     compile group: 'org.apache.lucene', name: 'lucene-core', version: '7.4.0'
-    // https://mvnrepository.com/artifact/org.apache.lucene/lucene-core
-    compile group: 'org.apache.lucene', name: 'lucene-core', version: '8.2.0'
-
-
-    compile 'commons-dbcp:commons-dbcp:1.4'
-    compile group: 'commons-logging', name: 'commons-logging', version: '1.2'
-    compile group: 'commons-lang', name: 'commons-lang', version: '2.6'
-    compile 'log4j:log4j:1.2.17'
-
-    compile group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.9.7'
-    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.7'
-
-// https://mvnrepository.com/artifact/org.springframework/spring-beans
-    compile group: 'org.springframework', name: 'spring-beans', version: '5.3.0'
-// https://mvnrepository.com/artifact/org.springframework/spring-jdbc
-    compile group: 'org.springframework', name: 'spring-jdbc', version: '5.3.0'
-    compile group: 'org.jsoup', name: 'jsoup', version: '1.8.3'
-// https://mvnrepository.com/artifact/com.github.samtools/htsjdk
-    compile group: 'com.github.samtools', name: 'htsjdk', version: '2.21.1'
+    implementation group: 'org.springframework', name: 'spring-beans', version: '5.3.0'
+    implementation group: 'org.springframework', name: 'spring-jdbc', version: '5.3.0'
+    implementation group: 'org.jsoup', name: 'jsoup', version: '1.8.3'
+    implementation group: 'com.github.samtools', name: 'htsjdk', version: '2.21.1'
 
 // https://mvnrepository.com/artifact/com.amazonaws/aws-java-sdk-core
-    compile group: 'com.amazonaws', name: 'aws-java-sdk-core', version: '1.11.739'
+    implementation group: 'com.amazonaws', name: 'aws-java-sdk-core', version: '1.11.739'
 
 
 }

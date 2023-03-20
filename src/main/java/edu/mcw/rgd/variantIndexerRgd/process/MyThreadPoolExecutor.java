@@ -1,18 +1,20 @@
 package edu.mcw.rgd.variantIndexerRgd.process;
 
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.Manager;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.concurrent.*;
 
+import static org.apache.logging.log4j.LogManager.getLogger;
+
 /**
  * Created by jthota on 12/20/2019.
  */
 public class MyThreadPoolExecutor extends ThreadPoolExecutor {
-    Logger log=Logger.getLogger(Manager.class);
+    Logger log=getLogger(Manager.class);
     public MyThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveTime, TimeUnit unit, BlockingQueue<Runnable> workQueue) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue);
     }
@@ -35,9 +37,9 @@ public class MyThreadPoolExecutor extends ThreadPoolExecutor {
         if(t!=null){
             System.err.println("Uncaught exception! "+t +" STACKTRACE:"+ Arrays.toString(t.getStackTrace()));
             log.info("Uncaught exception! "+t +" STACKTRACE:"+ Arrays.toString(t.getStackTrace()));
-            if(ESClient.getClient()!=null)
+
                 try {
-                    ESClient.getClient().close();
+                    ClientInit.destroy();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

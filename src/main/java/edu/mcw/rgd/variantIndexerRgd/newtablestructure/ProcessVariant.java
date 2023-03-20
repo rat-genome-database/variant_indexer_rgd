@@ -10,11 +10,9 @@ import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.xcontent.XContentType;
 
 
 import java.util.*;

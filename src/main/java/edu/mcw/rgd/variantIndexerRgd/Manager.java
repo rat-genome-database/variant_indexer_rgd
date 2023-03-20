@@ -12,6 +12,7 @@ import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 
@@ -20,10 +21,9 @@ import edu.mcw.rgd.variantIndexerRgd.newtablestructure.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 import edu.mcw.rgd.variantIndexerRgd.service.IndexAdmin;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -48,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 import static edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3.geneLociMap;
+import static org.apache.logging.log4j.LogManager.getLogger;
 
 /**
  * Created by jthota on 11/14/2019.
@@ -74,7 +75,7 @@ public class Manager {
     Zygosity zygosity=new Zygosity();
     BulkIndexProcessor bulkIndexProcessor;
 
-    static Logger log= Logger.getLogger(Manager.class);
+    static Logger log=getLogger(Manager.class);
 
     public static void main(String[] args) throws Exception {
 
@@ -139,12 +140,12 @@ public class Manager {
         }catch (Exception e){
 
         manager.bulkIndexProcessor.destroy();
-          ESClient.destroy();
+          ClientInit.destroy();
             e.printStackTrace();
         }
         manager.bulkIndexProcessor.destroy();
 
-        ESClient.destroy();
+        ClientInit.destroy();
 
     }
 
@@ -519,7 +520,7 @@ public class Manager {
     public String getClusterHealth(String index) throws Exception {
 
         ClusterHealthRequest request = new ClusterHealthRequest(index);
-        ClusterHealthResponse response = ESClient.getClient().cluster().health(request, RequestOptions.DEFAULT);
+        ClusterHealthResponse response = ClientInit.getClient().cluster().health(request, RequestOptions.DEFAULT);
         System.out.println(response.getStatus().name());
    //     log.info("CLUSTER STATE: " + response.getStatus().name());
         if (response.isTimedOut()) {
@@ -556,7 +557,7 @@ public class Manager {
         //    log.info(rgdIndex.getIndex() + " pointed to " + RgdIndex.getNewAlias());
         }
         AcknowledgedResponse indicesAliasesResponse =
-                ESClient.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
+                ClientInit.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
 
         return  true;
 

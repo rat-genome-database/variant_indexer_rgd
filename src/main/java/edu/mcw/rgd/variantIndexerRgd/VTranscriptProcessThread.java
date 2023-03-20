@@ -1,15 +1,14 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 import edu.mcw.rgd.variantIndexerRgd.model.CommonFormat2Line;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -18,9 +17,11 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.xcontent.XContentType;
 
+
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -62,7 +63,13 @@ public class VTranscriptProcessThread implements Runnable {
         };
         BulkProcessor bulkProcessor = BulkProcessor.builder(
                 (request, bulkListener) ->
-                        ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+                {
+                    try {
+                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+                    } catch (UnknownHostException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
                 listener)
                 .setBulkActions(10000)
                 .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))

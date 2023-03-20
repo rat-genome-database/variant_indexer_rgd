@@ -8,13 +8,12 @@ import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.Variant;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.util.Zygosity;
 
 import edu.mcw.rgd.variantIndexerRgd.VariantIndexerThread;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.apache.lucene.search.Query;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -27,13 +26,13 @@ import org.elasticsearch.client.RequestOptions;
 
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
+
+import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.xcontent.XContentType;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
@@ -41,6 +40,7 @@ import org.springframework.core.io.FileSystemResource;
 import java.io.IOException;
 
 import java.math.BigDecimal;
+import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -318,7 +318,13 @@ public class VariantLoad3 {
 
             BulkProcessor bulkProcessor = BulkProcessor.builder(
                     (request, bulkListener) ->
-                            ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+                    {
+                        try {
+                            ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+                        } catch (UnknownHostException e) {
+                            throw new RuntimeException(e);
+                        }
+                    },
                     listener)
                     .setBulkActions(10000)
                     .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
@@ -381,7 +387,13 @@ public class VariantLoad3 {
 
         BulkProcessor bulkProcessor = BulkProcessor.builder(
                 (request, bulkListener) ->
-                        ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+                {
+                    try {
+                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+                    } catch (UnknownHostException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
                 listener)
                 .setBulkActions(10000)
                 .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
@@ -467,7 +479,7 @@ public class VariantLoad3 {
         request.source(srb);
 
 
-        SearchResponse sr=ESClient.getClient().search(request, RequestOptions.DEFAULT);
+        SearchResponse sr=ClientInit.getClient().search(request, RequestOptions.DEFAULT);
         List<edu.mcw.rgd.datamodel.variants.VariantTranscript> tds= new ArrayList<>();
         for(SearchHit h:sr.getHits().getHits()){
             Map source=h.getSourceAsMap();
@@ -498,7 +510,7 @@ public class VariantLoad3 {
         request.source(srb);
 
         //   RestHighLevelClient client=ESClient.getInstance();
-        SearchResponse sr=ESClient.getClient().search(request, RequestOptions.DEFAULT);
+        SearchResponse sr=ClientInit.getClient().search(request, RequestOptions.DEFAULT);
         List<VariantTranscript> tds= new ArrayList<>();
         for(SearchHit h:sr.getHits().getHits()){
             Map source=h.getSourceAsMap();
@@ -514,7 +526,7 @@ public class VariantLoad3 {
             tds.add(td);
 
         }
-        ESClient.destroy();
+        ClientInit.destroy();
         // System.out.println("TRANSCIPTS SIZE: "+tds.size());
         return tds;
     }
@@ -566,13 +578,13 @@ public static void main(String[] args) throws IOException {
     DefaultListableBeanFactory bf= new DefaultListableBeanFactory();
     new XmlBeanDefinitionReader(bf) .loadBeanDefinitions(new FileSystemResource("properties/AppConfigure.xml"));
 
-    ESClient es= (ESClient) bf.getBean("client");
+   /* ESClient es= (ESClient) bf.getBean("client");
 
     loader.getVariantTranscripts(9907220,"","", "");
     if(es!=null){
         es.destroy();
     }
-    System.out.println("Done!!");
+    System.out.println("Done!!");*/
 }
 
 }

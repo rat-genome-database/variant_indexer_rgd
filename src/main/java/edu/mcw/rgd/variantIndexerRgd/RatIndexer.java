@@ -7,12 +7,12 @@ import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.datamodel.GeneLoci;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 
+import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndexObject;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -21,9 +21,11 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.xcontent.XContentType;
 
+
+import java.net.UnknownHostException;
 import java.util.*;
 
 
@@ -72,7 +74,7 @@ public class RatIndexer implements Runnable {
                     e.printStackTrace();
                 }
                 IndexRequest request= new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
-                ESClient.getClient().index(request, RequestOptions.DEFAULT);
+                ClientInit.getClient().index(request, RequestOptions.DEFAULT);
                 log.info(Thread.currentThread().getName()+"\tMAPKEY:"+ v.getMapKey() +"\tCHR: "+v.getChromosome() +"\tSTART POS: "+ v.getStartPos() +"\tEND!!" );
 
             } catch (Exception e) {
@@ -122,7 +124,13 @@ public class RatIndexer implements Runnable {
         };
          return BulkProcessor.builder(
                 (request, bulkListener) ->
-                        ESClient.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener),
+                {
+                    try {
+                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
+                    } catch (UnknownHostException e) {
+                        throw new RuntimeException(e);
+                    }
+                },
                 listener)
                 .setBulkActions(10000)
                 .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))

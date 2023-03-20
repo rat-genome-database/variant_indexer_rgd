@@ -2,12 +2,12 @@ package edu.mcw.rgd.variantIndexerRgd.es;
 
 import edu.mcw.rgd.datamodel.SpeciesType;
 
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
+import edu.mcw.rgd.services.ClientInit;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchScrollRequest;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 
@@ -30,7 +30,7 @@ public class ESDataService {
 
 //        ExecutorService executor= new MyThreadPoolExecutor(3,3,0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
 
-        SearchResponse sr= ESClient.getClient().search(request, RequestOptions.DEFAULT);
+        SearchResponse sr= ClientInit.getClient().search(request, RequestOptions.DEFAULT);
         String scrollId=sr.getScrollId();
         Indexer indexer=new Indexer(sr.getHits().getHits());
         indexer.run();
@@ -39,7 +39,7 @@ public class ESDataService {
         do {
             SearchScrollRequest scrollRequest = new SearchScrollRequest(scrollId);
             scrollRequest.scroll(TimeValue.timeValueSeconds(60));
-            sr = ESClient.getClient().scroll(scrollRequest, RequestOptions.DEFAULT);
+            sr = ClientInit.getClient().scroll(scrollRequest, RequestOptions.DEFAULT);
             scrollId = sr.getScrollId();
          /*    workerThread=new Indexer(sr.getHits().getHits());
              executor.execute(workerThread);*/
