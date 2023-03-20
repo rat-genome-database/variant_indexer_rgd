@@ -1,6 +1,5 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -8,7 +7,7 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.core.TimeValue;
 
 import java.util.concurrent.TimeUnit;
 

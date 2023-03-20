@@ -13,8 +13,6 @@ import edu.mcw.rgd.util.Zygosity;
 import edu.mcw.rgd.variantIndexerRgd.VariantIndexerThread;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.apache.lucene.search.Query;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -27,13 +25,13 @@ import org.elasticsearch.client.RequestOptions;
 
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
+
+import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.xcontent.XContentType;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;

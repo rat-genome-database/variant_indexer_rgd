@@ -13,14 +13,14 @@ import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 import org.elasticsearch.action.bulk.*;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.xcontent.XContentType;
+
 
 import java.math.BigDecimal;
 import java.util.*;

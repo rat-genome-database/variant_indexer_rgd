@@ -9,7 +9,7 @@ import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.xcontent.XContentType;
 
 import java.util.ArrayList;
 import java.util.HashMap;

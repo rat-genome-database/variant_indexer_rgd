@@ -20,10 +20,9 @@ import edu.mcw.rgd.variantIndexerRgd.newtablestructure.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
 import edu.mcw.rgd.variantIndexerRgd.service.IndexAdmin;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
@@ -48,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
 import static edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3.geneLociMap;
+import static org.apache.logging.log4j.LogManager.getLogger;
 
 /**
  * Created by jthota on 11/14/2019.
@@ -74,7 +74,7 @@ public class Manager {
     Zygosity zygosity=new Zygosity();
     BulkIndexProcessor bulkIndexProcessor;
 
-    static Logger log= Logger.getLogger(Manager.class);
+    static Logger log=getLogger(Manager.class);
 
     public static void main(String[] args) throws Exception {
 

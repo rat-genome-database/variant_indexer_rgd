@@ -11,8 +11,7 @@ import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndexObject;
-import edu.mcw.rgd.variantIndexerRgd.service.ESClient;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -21,8 +20,9 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.xcontent.XContentType;
+
 
 import java.util.*;
 

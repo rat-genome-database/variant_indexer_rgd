@@ -1,14 +1,14 @@
 package edu.mcw.rgd.variantIndexerRgd.service;
 
+import edu.mcw.rgd.variantIndexerRgd.Manager;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.xcontent.XContentType;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
@@ -18,11 +18,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import static org.apache.logging.log4j.LogManager.getLogger;
+
 /**
  * Created by jthota on 11/15/2019.
  */
 public class IndexAdmin {
-    private static Logger log=Logger.getLogger("main");
+    private static final Logger log=getLogger(Manager.class);
     private RgdIndex rgdIndex;
     public void createIndex(String mappings, String type) throws Exception {
         GetAliasesRequest aliasesRequest=new GetAliasesRequest(rgdIndex.getIndex());
@@ -131,7 +133,7 @@ public class IndexAdmin {
         admin.rgdIndex.setIndices(indices);
 
 
-        Logger log= Logger.getLogger(IndexAdmin.class);
+        Logger log= getLogger(IndexAdmin.class);
         try {
             admin.createIndex("","");
         } catch (Exception e) {
