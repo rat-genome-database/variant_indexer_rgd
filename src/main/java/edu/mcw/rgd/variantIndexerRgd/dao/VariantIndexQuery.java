@@ -62,6 +62,8 @@ public class VariantIndexQuery extends MappingSqlQuery {
 
                     vt.setTripletError(rs.getString("triplet_error"));
                     vt.setFrameShift(rs.getString("frameshift"));
+                    vt.setTranscriptSymbol(rs.getString("transcript_acc_id"));
+                    vt.setProteinSymbol(rs.getString("protein_acc_id"));
                     vts.add(vt);
                     vi.setVariantTranscripts(vts);
             }}catch (Exception e){}
