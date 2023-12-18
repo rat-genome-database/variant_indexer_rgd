@@ -343,7 +343,7 @@ public class VariantDao extends AbstractDAO {
     public List<VariantIndex> getVariantsNewTbaleStructure(  int mapKey, List<Integer> variantIdsList) throws Exception {
 
         String csTable=getConScoreTable(mapKey,null);
-        String sql="select v.*,vmd.*, vsd.*,vt.*, p.prediction ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
+        String sql="select v.*,vmd.*, vsd.*,vt.*,t.acc_id as transcript_acc_id,t.protein_acc_id as protein_acc_id, p.prediction ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
                 " g.gene_symbol_lc as gene_symbol_lc, md.strand as strand " ;
 
         if(!csTable.equals("")){
