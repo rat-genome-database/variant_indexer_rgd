@@ -45,6 +45,11 @@ public class VariantIndexQuery extends MappingSqlQuery {
             //  vi.setAnalysisName(rs.getString("analysis_name"));
 
             vi.setMapKey(rs.getInt("map_key"));
+            try {
+                    vi.setRsId(rs.getString("rs_id"));
+            }catch (Exception e){
+
+            }
 
             /***************Variant Transcript****************************/
             try{
@@ -64,6 +69,8 @@ public class VariantIndexQuery extends MappingSqlQuery {
                     vt.setFrameShift(rs.getString("frameshift"));
                     vt.setTranscriptSymbol(rs.getString("transcript_acc_id"));
                     vt.setProteinSymbol(rs.getString("protein_acc_id"));
+                    vt.setFullRefAAPos(rs.getInt("FULL_REF_AA_POS"));
+                    vt.setFullRefNucPos(rs.getInt("FULL_REF_NUC_POS"));
                     vts.add(vt);
                     vi.setVariantTranscripts(vts);
             }}catch (Exception e){}
