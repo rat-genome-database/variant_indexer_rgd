@@ -14,6 +14,8 @@ $APPDIR/pig_all_chr.sh $ENV 911 9
 $APPDIR/greenMonkey_all_chr.sh $ENV 1311 13
 
 $APPDIR/mouse_all_chr.sh $ENV 35 2
+$APPDIR/mouse_all_chr.sh $ENV 239 2
+
 
 $APPDIR/human_all_chr.sh $ENV 38 1
 $APPDIR/human_all_chr.sh $ENV 17 1
