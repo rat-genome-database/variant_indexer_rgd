@@ -16,11 +16,11 @@
             </list>
         </property>
        </bean>
-    <bean id="rgdIndex" class="edu.mcw.rgd.variantIndexerRgd.model.RgdIndex"/>
-    <bean id="admin" class="edu.mcw.rgd.variantIndexerRgd.service.IndexAdmin">
+    <bean id="rgdIndex" class="edu.mcw.rgd.datamodel.RgdIndex"/>
+    <bean id="admin" class="edu.mcw.rgd.services.IndexAdmin">
         <property name="rgdIndex" ref="rgdIndex"/>
     </bean>
 
-    <bean id="client" class="edu.mcw.rgd.variantIndexerRgd.service.ESClient" init-method="init" destroy-method="destroy"/>
+    <bean id="client" class="edu.mcw.rgd.services.ClientInit" init-method="init" destroy-method="destroy"/>
     <bean id="bulkProcessor" class="edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor" init-method="init" destroy-method="destroy"> </bean>
 </beans>
