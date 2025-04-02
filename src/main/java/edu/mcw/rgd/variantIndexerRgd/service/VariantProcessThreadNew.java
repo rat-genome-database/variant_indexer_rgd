@@ -1,5 +1,6 @@
 package edu.mcw.rgd.variantIndexerRgd.service;
 
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Variant;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
@@ -10,7 +11,6 @@ import edu.mcw.rgd.util.Zygosity;
 import edu.mcw.rgd.variantIndexerRgd.VariantIndexerThread;
 
 import edu.mcw.rgd.variantIndexerRgd.model.CommonFormat2Line;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import org.elasticsearch.action.index.IndexRequest;

@@ -3,6 +3,7 @@ package edu.mcw.rgd.variantIndexerRgd.dao;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.dao.DataSourceFactory;
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.Variant;

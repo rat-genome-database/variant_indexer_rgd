@@ -1,10 +1,10 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.variantIndexerRgd.model.Json;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.xcontent.XContentType;

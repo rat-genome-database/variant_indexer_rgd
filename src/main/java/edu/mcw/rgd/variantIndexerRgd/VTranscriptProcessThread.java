@@ -1,12 +1,12 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 import edu.mcw.rgd.variantIndexerRgd.model.CommonFormat2Line;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import org.elasticsearch.action.bulk.BackoffPolicy;

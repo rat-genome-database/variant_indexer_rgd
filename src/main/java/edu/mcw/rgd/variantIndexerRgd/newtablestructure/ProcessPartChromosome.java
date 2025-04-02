@@ -3,10 +3,9 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.datamodel.GeneLoci;
 
-import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.Json;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
-import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
+
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.xcontent.XContentType;

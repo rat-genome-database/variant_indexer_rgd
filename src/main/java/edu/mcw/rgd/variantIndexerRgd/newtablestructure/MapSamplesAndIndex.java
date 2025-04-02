@@ -1,10 +1,10 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.xcontent.XContentType;

@@ -4,13 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.dao.impl.MapDAO;
 import edu.mcw.rgd.datamodel.Chromosome;
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
 
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;

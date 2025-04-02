@@ -8,11 +8,13 @@ import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.datamodel.*;
 
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.services.ClientInit;
+import edu.mcw.rgd.services.IndexAdmin;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 
@@ -21,7 +23,6 @@ import edu.mcw.rgd.variantIndexerRgd.newtablestructure.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;
-import edu.mcw.rgd.variantIndexerRgd.service.IndexAdmin;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;

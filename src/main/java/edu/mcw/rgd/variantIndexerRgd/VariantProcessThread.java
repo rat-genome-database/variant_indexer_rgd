@@ -2,6 +2,7 @@ package edu.mcw.rgd.variantIndexerRgd;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
