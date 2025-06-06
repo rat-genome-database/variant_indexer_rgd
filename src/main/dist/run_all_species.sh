@@ -1,12 +1,14 @@
 APPDIR=/home/rgddata/pipelines/variant_indexer_rgd
 
 ENV=$1
+$APPDIR/rat_all_chr.sh $ENV 380 3
 $APPDIR/rat_all_chr.sh $ENV 372 3
 $APPDIR/rat_all_chr.sh $ENV 360 3
 $APPDIR/rat_all_chr.sh $ENV 60 3
 $APPDIR/rat_all_chr.sh $ENV 70 3
 
 $APPDIR/dog_all_chr.sh $ENV 631 6
+$APPDIR/dog_all_chr.sh $ENV 634 6
 
 $APPDIR/pig_all_chr.sh $ENV 910 9
 $APPDIR/pig_all_chr.sh $ENV 911 9
