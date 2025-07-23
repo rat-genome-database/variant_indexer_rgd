@@ -169,10 +169,7 @@ public class Manager {
         executor2.shutdown();
         while (!executor2.isTerminated()) {}
 
-
-
-
-     String clusterStatus = this.getClusterHealth(RgdIndex.getNewAlias());
+        String clusterStatus = this.getClusterHealth(RgdIndex.getNewAlias());
         if (!clusterStatus.equalsIgnoreCase("ok")) {
             System.out.println(clusterStatus + ", refusing to continue with operations");
            log.info(clusterStatus + ", refusing to continue with operations");

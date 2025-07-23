@@ -4,6 +4,7 @@
         <property name="version" value="Variant Indexer v.0.1.0 Nov 14, 2019"/>
         <property name="rgdIndex" ref="rgdIndex"/>
         <property name="admin" ref="admin"/>
+        <property name="bulkIndexProcessor" ref="bulkProcessor"/>
         <property name="environments">
 
             <list>
@@ -22,5 +23,5 @@
     </bean>
 
     <bean id="client" class="edu.mcw.rgd.services.ClientInit" init-method="init" destroy-method="destroy"/>
-    <bean id="bulkProcessor" class="edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor" init-method="init" destroy-method="destroy"> </bean>
+    <bean id="bulkProcessor" class="edu.mcw.rgd.services.BulkIndexProcessor" init-method="getInstance" destroy-method="destroy"> </bean>
 </beans>
