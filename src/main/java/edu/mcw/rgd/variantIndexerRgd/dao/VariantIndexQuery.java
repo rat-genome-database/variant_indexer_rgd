@@ -27,20 +27,24 @@ public class VariantIndexQuery extends MappingSqlQuery {
             vi.setPaddingBase(rs.getString("padding_base"));
             vi.setEndPos(rs.getLong("end_pos"));
             vi.setRefNuc(rs.getString("ref_nuc"));
-            vi.setSampleId(rs.getInt("sample_id"));
+//            vi.setSampleId(rs.getInt("sample_id"));
             vi.setStartPos(rs.getLong("start_pos"));
-            vi.setTotalDepth(rs.getInt("total_depth"));
-            vi.setVarFreq(rs.getInt("var_freq"));
+//            vi.setTotalDepth(rs.getInt("total_depth"));
+//            vi.setVarFreq(rs.getInt("var_freq"));
             vi.setVariantType(rs.getString("variant_type"));
             vi.setVarNuc(rs.getString("var_nuc"));
-            vi.setZygosityStatus(rs.getString("zygosity_status"));
-            vi.setGenicStatus(rs.getString("genic_status"));
-            vi.setZygosityPercentRead(rs.getDouble("zygosity_percent_read"));
-            vi.setZygosityPossError(rs.getString("zygosity_poss_error"));
-            vi.setZygosityRefAllele(rs.getString("zygosity_ref_allele"));
-            vi.setZygosityNumAllele(rs.getInt("zygosity_num_allele"));
-            vi.setZygosityInPseudo(rs.getString("zygosity_in_pseudo"));
-            vi.setQualityScore(rs.getInt("quality_score"));
+            try {
+                    vi.setZygosityStatus(rs.getString("zygosity_status"));
+                    vi.setGenicStatus(rs.getString("genic_status"));
+                    vi.setZygosityPercentRead(rs.getDouble("zygosity_percent_read"));
+                    vi.setZygosityPossError(rs.getString("zygosity_poss_error"));
+                    vi.setZygosityRefAllele(rs.getString("zygosity_ref_allele"));
+                    vi.setZygosityNumAllele(rs.getInt("zygosity_num_allele"));
+                    vi.setZygosityInPseudo(rs.getString("zygosity_in_pseudo"));
+                    vi.setQualityScore(rs.getInt("quality_score"));
+            }catch (Exception e){
+//                    System.err.println("ERRROR IN THIS BLOCK");
+            }
             //   vi.setHGVSNAME(rs.getString("hgvs_name"));
             //  vi.setAnalysisName(rs.getString("analysis_name"));
 

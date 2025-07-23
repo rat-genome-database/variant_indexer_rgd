@@ -13,6 +13,7 @@ import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
+import edu.mcw.rgd.services.BulkIndexProcessor;
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.services.IndexAdmin;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
@@ -74,10 +75,10 @@ public class Manager {
     Map<Integer, List<BigDecimal>> conScoresMap=new HashMap<>();
     VariantLoad3 loader=new VariantLoad3();
     Zygosity zygosity=new Zygosity();
-    BulkIndexProcessor bulkIndexProcessor;
+    private edu.mcw.rgd.services.BulkIndexProcessor bulkIndexProcessor;
 
     static Logger log=getLogger(Manager.class);
-
+    GeneLociDAO geneLociDAO=new GeneLociDAO();
     public static void main(String[] args) throws Exception {
 
        DefaultListableBeanFactory bf= new DefaultListableBeanFactory();
@@ -85,10 +86,8 @@ public class Manager {
        Manager manager= (Manager) bf.getBean("manager");
 
        log.info(manager.version);
-      //  ESClient es= (ESClient) bf.getBean("client");
-     //   BulkIndexProcessor bulkIndexProcessor= (BulkIndexProcessor) bf.getBean("bulkProcessor");
-       manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
-       manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
+        manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
+//        manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
       try{
 
             List<String> indices= new ArrayList<>();
@@ -152,43 +151,25 @@ public class Manager {
 
     public void run(String[] args) throws Exception {
         long start = System.currentTimeMillis();
-        VariantDao vdao=new VariantDao();
         String species= SpeciesType.getCommonName(speciesTypeKey);
         if(command.equalsIgnoreCase("reindex"))
           admin.createIndex("", species);
         else  if(command.equalsIgnoreCase("update"))
             admin.updateIndex();
+        System.out.println("Processing "+species+" variants...");
+        this.setMapKey(mapKey);
+        System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
+        ExecutorService executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        Runnable chromosomeThread= null;
+        for (String chr : chromosomes) {
+            List<GeneLoci> geneLoci=geneLociDAO.getGeneLociByMapKeyAndChr(mapKey,chr);
+            chromosomeThread=new ChromosomeThread(chr, mapKey,speciesTypeKey, geneLoci);
+            executor2.execute(chromosomeThread);
+        }
+        executor2.shutdown();
+        while (!executor2.isTerminated()) {}
 
-        switch (speciesTypeKey) {
-          /*  case 1:
-                processHumanVCF();
-                break;*/
-            case 1:
-            case 2:
-            case 3:
-                System.out.println("SPECIES: "+ speciesTypeKey);
-            case 6:
-            case 9:
-            case 13:
-                System.out.println("Processing "+species+" variants...");
-                this.setMapKey(mapKey);
 
-                System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
-
-                       ExecutorService executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-                       Runnable chromosomeThread= null;
-                       for (String chr : chromosomes) {
-                          chromosomeThread=new ChromosomeThread(chr, mapKey,speciesTypeKey);
-                          executor2.execute(chromosomeThread);
-                       }
-                       executor2.shutdown();
-                       while (!executor2.isTerminated()) {}
-
-                break;
-            default:
-                break;
-
-            }
 
 
      String clusterStatus = this.getClusterHealth(RgdIndex.getNewAlias());
@@ -207,19 +188,7 @@ public class Manager {
         log.info(" - " + Utils.formatElapsedTime(start, end));
         System.out.println("CLIENT IS CLOSED");
     }
-    public Collection[] split(List<Integer> rgdids, int size) throws Exception {
-        int numOfBatches = rgdids.size() / size + 1;
-        Collection[] batches = new Collection[numOfBatches];
 
-        for(int index = 0; index < numOfBatches; ++index) {
-            int count = index + 1;
-            int fromIndex = Math.max((count - 1) * size, 0);
-            int toIndex = Math.min(count * size, rgdids.size());
-            batches[index] = rgdids.subList(fromIndex, toIndex);
-        }
-
-        return batches;
-    }
 
     public List<VariantIndexObject> getIndexObjects(List<CommonFormat2Line> list, GeneCache geneCache){
         List<VariantIndexObject> indexObjects= new ArrayList<>();
@@ -857,5 +826,13 @@ public class Manager {
             default:
                 return " CONSERVATION_SCORE_6 ";
         }
+    }
+
+    public BulkIndexProcessor getBulkIndexProcessor() {
+        return bulkIndexProcessor;
+    }
+
+    public void setBulkIndexProcessor(BulkIndexProcessor bulkIndexProcessor) {
+        this.bulkIndexProcessor = bulkIndexProcessor;
     }
 }
