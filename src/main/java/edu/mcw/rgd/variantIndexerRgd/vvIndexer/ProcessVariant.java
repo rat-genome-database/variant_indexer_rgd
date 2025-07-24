@@ -37,7 +37,8 @@ public class ProcessVariant implements  Runnable {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
+        executor2.shutdown();
+        while (!executor2.isTerminated()) {}
     }
 
 }
