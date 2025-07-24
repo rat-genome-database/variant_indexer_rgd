@@ -41,19 +41,21 @@ startScripts {
     applicationName = myAppName
 }
 jar {
-    baseName = myAppName
     manifest {
         attributes(
                 'Built-By': System.getProperty('user.name'),
                 'Built-Date': new Date(),
-                'Built-JDK': System.getProperty('java.version')
+                'Built-JDK': System.getProperty('java.version'),
+                'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.join(' '),
+                'Main-Class': mainClassName
         )
     }
 }
 
 distributions {
     main {
-        baseName = myAppName
+        //baseName = myAppName
+        distributionBaseName = myAppName
     }
 }
 task update_rgdcore(type:Copy){
