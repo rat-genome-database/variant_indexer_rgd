@@ -1,26 +1,26 @@
-package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
+package edu.mcw.rgd.variantIndexerRgd.vvIndexer;
 
 import edu.mcw.rgd.dao.impl.GeneDAO;
 
 import edu.mcw.rgd.dao.impl.MapDAO;
 
+import edu.mcw.rgd.dao.impl.VariantInfoDAO;
 import edu.mcw.rgd.dao.impl.variants.VariantDAO;
 import edu.mcw.rgd.datamodel.*;
+import edu.mcw.rgd.datamodel.variants.VariantIndex;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 
 import edu.mcw.rgd.services.IndexDocument;
-import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
-import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class VariantsNewTableThread extends VariantDao implements Runnable{
+public class VariantDetailsThread implements Runnable{
     private final VariantIndex variant;
     private List<VariantTranscript> transcripts;
-    private List<VariantSampleDetail> sampleDetails;
+    public List<VariantSampleDetail> sampleDetails;
     private List<ConservationScore> conservationScores;
 
     private final List<GeneLoci> geneLoci;
@@ -28,11 +28,12 @@ public class VariantsNewTableThread extends VariantDao implements Runnable{
     private final int mapKey;
     private List<MapData> mapData;
 
-    VariantDao variantDao=new VariantDao();
     VariantDAO variantDAO=new VariantDAO();
     GeneDAO geneDAO=new GeneDAO();
     MapDAO mapDAO=new MapDAO();
-    public VariantsNewTableThread(int mapKey, VariantIndex variant, List<GeneLoci> geneLoci) throws Exception {
+    VariantInfoDAO variantInfoDAO=new VariantInfoDAO();
+
+    public VariantDetailsThread(int mapKey, VariantIndex variant, List<GeneLoci> geneLoci) throws Exception {
         this.variant=variant;
         this.mapKey=mapKey;
         this.geneLoci=geneLoci;
@@ -90,7 +91,7 @@ public class VariantsNewTableThread extends VariantDao implements Runnable{
     public void mapSampleDetails( VariantIndex vi, VariantSampleDetail variant){
 
         vi.setSampleId(variant.getSampleId());
-        vi.setSampleId(variant.getSampleId());
+        vi.setAnalysisName(variant.getAnalysisName());
         vi.setTotalDepth(variant.getDepth());
         vi.setVarFreq(variant.getVariantFrequency());
         vi.setZygosityStatus(variant.getZygosityStatus());
@@ -125,7 +126,7 @@ public class VariantsNewTableThread extends VariantDao implements Runnable{
        variantindex.setRegionNameLc(regionNames.stream().map(String::toLowerCase).collect(Collectors.toList()));
     }
     public void setTranscripts() throws Exception {
-       this. transcripts= variantDao.getVariantTranscripts(variant.getVariant_id(), mapKey);
+       this. transcripts= variantDAO.getVariantTranscripts(variant.getVariant_id(), mapKey);
     }
     public void setGeneDetails() throws Exception {
         if(transcripts!=null && transcripts.size()>0){
@@ -159,9 +160,10 @@ public class VariantsNewTableThread extends VariantDao implements Runnable{
 
     }
     public void setConservationScore() throws Exception {
-        String csTable=getConScoreTable(mapKey,null);
+        VariantSearchBean vsb=new VariantSearchBean(mapKey);
+        String csTable=vsb.getConScoreTable();
         if(csTable!=null && !csTable.equals("")) {
-            this.conservationScores = variantDao.getConservationScores(variant.getStartPos(), variant.getChromosome(), csTable);
+            this.conservationScores = variantDAO.getConservationScores(variant.getStartPos(), variant.getChromosome(), csTable);
         }
     }
     public void setSampleDetails() throws Exception {
@@ -178,5 +180,8 @@ public class VariantsNewTableThread extends VariantDao implements Runnable{
             }
         }
     }
-
+    public String getClinvarInfo(int variantRgdId) throws Exception {
+        VariantInfo info=variantInfoDAO.getVariant(variantRgdId)  ;
+        return  info.getClinicalSignificance();
+    }
 }

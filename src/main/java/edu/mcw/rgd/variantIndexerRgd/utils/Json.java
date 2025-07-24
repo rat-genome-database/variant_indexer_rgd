@@ -1,4 +1,4 @@
-package edu.mcw.rgd.variantIndexerRgd.model;
+package edu.mcw.rgd.variantIndexerRgd.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;

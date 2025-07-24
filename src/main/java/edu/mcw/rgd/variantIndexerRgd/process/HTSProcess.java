@@ -1,4 +1,4 @@
-package edu.mcw.rgd.variantIndexerRgd;
+package edu.mcw.rgd.variantIndexerRgd.process;
 
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.variant.variantcontext.VariantContext;

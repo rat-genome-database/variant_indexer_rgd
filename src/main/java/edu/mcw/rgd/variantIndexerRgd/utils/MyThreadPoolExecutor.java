@@ -1,4 +1,4 @@
-package edu.mcw.rgd.variantIndexerRgd.process;
+package edu.mcw.rgd.variantIndexerRgd.utils;
 
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.Manager;
