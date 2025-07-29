@@ -16,8 +16,8 @@ import java.util.concurrent.TimeUnit;
 public class ChromosomeThread  implements Runnable{
     private final String chr;
     private final int mapKey;
-    private int speciesTypeKey;
-    private  List<GeneLoci> geneLoci;
+    private final int speciesTypeKey;
+    private final List<GeneLoci> geneLoci;
     VariantDAO variantDao=new VariantDAO();
     protected static Logger logger= LogManager.getLogger();
     public ChromosomeThread(String chr, int mapKey, int speciesTypeKey, List<GeneLoci> geneLoci){
@@ -42,7 +42,7 @@ public class ChromosomeThread  implements Runnable{
                     break;
                 }
                 try {
-                    variantsNewTableThread=new ProcessVariant(documents, mapKey, geneLoci);
+                    variantsNewTableThread=new ProcessVariant(documents, mapKey, geneLoci, chr);
                     executor2.execute(variantsNewTableThread);
                 }catch (Exception e){e.printStackTrace();}
                 offset+=batchSize;
