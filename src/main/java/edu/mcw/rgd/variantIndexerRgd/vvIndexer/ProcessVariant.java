@@ -7,7 +7,9 @@ import edu.mcw.rgd.datamodel.GeneLoci;
 import edu.mcw.rgd.datamodel.variants.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.utils.MyThreadPoolExecutor;
 
+
 import java.util.*;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -30,23 +32,20 @@ public class ProcessVariant implements  Runnable {
 
     @Override
     public void run() {
-        ExecutorService executor2 = new MyThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        Runnable variantsNewTableThread= null;
         try {
-//            for(VariantIndex v:indexList){
-//                variantsNewTableThread=new VariantDetailsThread(mapKey, v,geneLoci);
-//                executor2.execute(variantsNewTableThread);
-//            }
-           List<VariantIndex> variantDetails = variantDAO.getVariantsNewTableStructure(mapKey, new ArrayList<>( indexList.stream().map(v->(int)v.getVariant_id()).collect(Collectors.toSet())));
 
-           variantsNewTableThread=new MapperThread(indexList, variantDetails, mapKey,geneLoci, chromosome);
-              executor2.execute(variantsNewTableThread);
+                Set<Long> ids=indexList.stream().map(VariantIndex::getVariant_id).collect(Collectors.toSet());
+                if(ids.size()>0) {
+                    List<VariantIndex> variantDetails = variantDAO.getVariantsNewTableStructure(mapKey, new ArrayList<>(indexList.stream().map(v -> (int) v.getVariant_id()).collect(Collectors.toSet())));
 
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        executor2.shutdown();
-        while (!executor2.isTerminated()) {}
+                   MapperThread detailsThread = new MapperThread(indexList, variantDetails, mapKey, geneLoci, chromosome);
+                   detailsThread.run();
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
     }
 
 }

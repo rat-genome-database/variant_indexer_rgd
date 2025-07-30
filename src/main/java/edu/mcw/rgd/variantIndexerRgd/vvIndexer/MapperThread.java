@@ -8,8 +8,12 @@ import edu.mcw.rgd.datamodel.VariantSearchBean;
 import edu.mcw.rgd.datamodel.variants.VariantIndex;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.services.IndexDocument;
+import edu.mcw.rgd.variantIndexerRgd.utils.MyThreadPoolExecutor;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
@@ -43,29 +47,18 @@ public class MapperThread implements Runnable{
         try {
             sortVariants();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+           e.printStackTrace();
         }
     }
     public void sortVariants() throws Exception {
-
+        ExecutorService executor2 = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        Runnable detailsThread= null;
         for (VariantIndex variant : variants) {
-            List<VariantIndex> filteredDetails=variantDetails.stream().filter(v->v.getVariant_id()==variant.getVariant_id()).collect(Collectors.toList());
-            Set<Integer> uniqueSampleIds=filteredDetails.stream().map(VariantIndex::getSampleId).collect(Collectors.toSet());
-            mapConservationScore(variant);
-            mapGeneLoci(variant);
-            if (mapKey == 38 || mapKey == 17) {
-             mapClinicalSignificance(variant);
-            }
-            mapTranscripts(variant, filteredDetails);
-            mapGene(variant, filteredDetails);
-
-            for(int sampleId:uniqueSampleIds) {
-                mapSampleDetails(variant, sampleId, filteredDetails);
-                IndexDocument.index(variant);
-            }
-
+            detailsThread=new VariantDetailsThread(mapKey,variant,variantDetails,conservationScores,clinicalSignificance,geneLoci);
+            detailsThread.run();
         }
-
+        executor2.shutdown();
+        while (!executor2.isTerminated()) {}
 
     }
     public void setConservationScore() throws Exception {
@@ -79,87 +72,5 @@ public class MapperThread implements Runnable{
         this.clinicalSignificance=variantInfoDAO.getClinicalSignificance(new ArrayList<>(variants.stream().map(VariantIndex::getVariant_id).collect(Collectors.toSet())));
     }
 
-    public void mapClinicalSignificance(VariantIndex variant){
-        try {
-            Set<String> clinvarSignificance =clinicalSignificance.get((int)variant.getVariant_id());
-            if (clinvarSignificance != null)
-                variant.setClinicalSignificance(String.join(",", clinvarSignificance));
-        } catch (Exception e) {
-            System.out.println("NO CLINICAL SIGNIFICANCE SAMPLE_ID:" + variant.getSampleId() + " RGD_ID:" + variant.getVariant_id());
-        }
-    }
-    public void mapSampleDetails( VariantIndex vi,int sampleId, List<VariantIndex> filteredDetails){
 
-        for(VariantIndex variant:filteredDetails) {
-            if(sampleId==variant.getSampleId()) {
-                vi.setSampleId(variant.getSampleId());
-                vi.setAnalysisName(variant.getAnalysisName());
-                vi.setTotalDepth(variant.getTotalDepth());
-                vi.setVarFreq(variant.getVarFreq());
-                vi.setZygosityStatus(variant.getZygosityStatus());
-                vi.setZygosityPercentRead(variant.getZygosityPercentRead());
-                vi.setZygosityPossError(variant.getZygosityPossError());
-                vi.setZygosityRefAllele(variant.getZygosityRefAllele());
-                vi.setZygosityNumAllele(variant.getZygosityNumAllele());
-                vi.setZygosityInPseudo(variant.getZygosityInPseudo());
-                vi.setQualityScore(variant.getQualityScore());
-            }
-        }
-    }
-    public void mapTranscripts(VariantIndex variant, List<VariantIndex> variantDetails){
-        List<VariantTranscript>vtranscripts=new ArrayList<>();
-        for (VariantIndex details : variantDetails) {
-            if(details.getVariantTranscripts()!=null){
-                    vtranscripts.addAll(details.getVariantTranscripts());
-                }
-            if(details.getVariantTranscripts()!=null && details.getVariantTranscripts().size()>0) {
-
-                for (VariantTranscript t : details.getVariantTranscripts()) {
-                    boolean exists=false;
-                    for (VariantTranscript vt : vtranscripts) {
-                        if (vt.getTranscriptRgdId() == t.getTranscriptRgdId()) {
-                            exists=true;
-                            break;
-
-                        }
-
-                    }
-                    if(!exists){
-                        vtranscripts.add(t);
-                    }
-                }
-
-            }
-
-        }
-        variant.setVariantTranscripts(vtranscripts);
-    }
-    public void mapGene(VariantIndex variant,List<VariantIndex> variantDetails){
-        Set<Integer> geneRgdIds = variantDetails.stream().map(VariantIndex::getGeneRgdId).collect(Collectors.toSet());
-        Set<String> geneSymbols = variantDetails.stream().map(VariantIndex::getGeneSymbol).collect(Collectors.toSet());
-        Set<String> strand = variantDetails.stream().map(VariantIndex::getStrand).filter(Objects::nonNull).collect(Collectors.toSet());
-        variant.setGeneSymbol(String.join(", ", geneSymbols));
-        variant.setGeneRgdId((new ArrayList<>(geneRgdIds)).get(0));
-        variant.setStrand(String.join(",", strand));
-    }
-    public void mapConservationScore(VariantIndex vi){
-        if(conservationScores!=null && conservationScores.size()>0){
-            vi.setConScores(conservationScores.stream().map(c->c.getScore().toString()).collect(Collectors.toList()));
-        }
-    }
-    public void mapGeneLoci(VariantIndex variant){
-        List<String> regionNames = new ArrayList<>();
-        for(GeneLoci gl:geneLoci){
-            if(gl.getMapKey()==mapKey && Objects.equals(gl.getChromosome(), variant.getChromosome()) && gl.getPosition()==variant.getStartPos()){
-
-                if (gl.getGeneSymbols()!=null) {
-                    regionNames.add(gl.getGeneSymbols());
-
-                }
-            }
-
-        }
-        variant.setRegionName(regionNames);
-        variant.setRegionNameLc(regionNames.stream().map(String::toLowerCase).collect(Collectors.toList()));
-    }
 }

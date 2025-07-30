@@ -7,6 +7,7 @@ import edu.mcw.rgd.variantIndexerRgd.utils.MyThreadPoolExecutor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -33,22 +34,19 @@ public class ChromosomeThread  implements Runnable{
         ExecutorService executor2 = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Runnable variantsNewTableThread= null;
         try{
-            int batchSize=1000;
-            int offset=0;
-            int count=0;
-            while (true){
-                List<VariantIndex> documents=variantDao.getVariantIndexDocs(mapKey,chr,batchSize, offset);
-                if(documents==null || documents.size()==0){
-                    break;
-                }
-                try {
-                    variantsNewTableThread=new ProcessVariant(documents, mapKey, geneLoci, chr);
-                    executor2.execute(variantsNewTableThread);
-                }catch (Exception e){e.printStackTrace();}
-                offset+=batchSize;
-                count++;
 
-            }
+                List<VariantIndex> documents=variantDao.getVariantIndexDocs(mapKey,chr,0,0);
+
+                try {
+                    Collection[] collections  = split(documents, 1000);
+
+                    for (int i = 0; i < collections.length; i++) {
+                        List<VariantIndex> collection=(List<VariantIndex>)collections[i];
+                         variantsNewTableThread = new ProcessVariant(collection, mapKey, geneLoci, chr);
+                        executor2.execute(variantsNewTableThread);
+                    }
+                }catch (Exception e){e.printStackTrace();}
+
 
         }catch (Exception e){
             e.printStackTrace();
@@ -58,5 +56,17 @@ public class ChromosomeThread  implements Runnable{
         logger.info(Thread.currentThread().getName() + " || MAPKEY : " + mapKey + " CHROMOSOME:"+chr+" END .... " + new Date());
 
     }
+    public Collection[] split(List<VariantIndex> indexList, int size) throws Exception {
+        int numOfBatches = indexList.size() / size + 1;
+        Collection[] batches = new Collection[numOfBatches];
 
+        for(int index = 0; index < numOfBatches; ++index) {
+            int count = index + 1;
+            int fromIndex = Math.max((count - 1) * size, 0);
+            int toIndex = Math.min(count * size, indexList.size());
+            batches[index] = indexList.subList(fromIndex, toIndex);
+        }
+
+        return batches;
+    }
 }
