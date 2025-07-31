@@ -133,7 +133,7 @@ public class Manager {
         System.out.println("Processing "+species+" variants...");
         this.setMapKey(mapKey);
         System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
-        ExecutorService executor2 = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        ExecutorService executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Runnable chromosomeThread= null;
         for (String chr : chromosomes) {
             List<GeneLoci> geneLoci=geneLociDAO.getGeneLociByMapKeyAndChr(mapKey,chr);

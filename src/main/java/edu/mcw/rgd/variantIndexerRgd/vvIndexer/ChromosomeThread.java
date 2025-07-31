@@ -31,7 +31,7 @@ public class ChromosomeThread  implements Runnable{
     public void run() {
         logger.info(Thread.currentThread().getName() + " || MAPKEY : " + mapKey + " CHROMOSOME:"+chr+" started .... " + new Date());
 
-        ExecutorService executor2 = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        ExecutorService executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Runnable variantsNewTableThread= null;
         try{
 
