@@ -18,7 +18,7 @@
        </bean>
     <bean id="rgdIndex" class="edu.mcw.rgd.datamodel.RgdIndex"/>
     <bean id="admin" class="edu.mcw.rgd.services.IndexAdmin">
-        <property name="rgdIndex" ref="rgdIndex"/>
+<!--        <property name="rgdIndex" ref="rgdIndex"/>-->
     </bean>
 
     <bean id="client" class="edu.mcw.rgd.services.ClientInit" init-method="init" destroy-method="destroy"/>
