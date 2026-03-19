@@ -1,6 +1,6 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.Json;
 
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
@@ -23,7 +23,7 @@ public class ProcessPartChromosome implements  Runnable{
             try {
                 String json = Json.serializer().mapper().writeValueAsString(vi);
                 String docId = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).id(docId).source(json, XContentType.JSON));
 
             } catch (Exception e) {
                 e.printStackTrace();

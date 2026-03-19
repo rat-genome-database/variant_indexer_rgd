@@ -1,7 +1,7 @@
 package edu.mcw.rgd.variantIndexerRgd.es;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
@@ -65,7 +65,7 @@ public class Indexer  {
                     ObjectMapper map=new ObjectMapper();
                     byte[] json = new byte[0];
                     json =  map.writeValueAsBytes(object);
-                    request.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                    request.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).source(json, XContentType.JSON));
 
                 } catch (Exception e) {
                     e.printStackTrace();

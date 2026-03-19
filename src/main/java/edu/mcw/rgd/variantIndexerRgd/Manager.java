@@ -5,7 +5,7 @@ import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.datamodel.*;
 
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
@@ -82,6 +82,7 @@ public class Manager {
 
        log.info(manager.version);
       rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
+       RgdIndex.setInstance(rgdIndex);
        manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
       try{
 
@@ -170,7 +171,7 @@ public class Manager {
             }
 
 
-     String clusterStatus = this.getClusterHealth(RgdIndex.getNewAlias());
+     String clusterStatus = this.getClusterHealth(rgdIndex.getNewAlias());
         if (!clusterStatus.equalsIgnoreCase("ok")) {
             System.out.println(clusterStatus + ", refusing to continue with operations");
            log.info(clusterStatus + ", refusing to continue with operations");
@@ -345,7 +346,7 @@ public class Manager {
     public void switchAlias() throws Exception {
         String newAlias = rgdIndex.getNewAlias();
         String oldAlias = rgdIndex.getOldAlias();
-        String indexName = RgdIndex.getIndex();
+        String indexName = rgdIndex.getIndex();
         System.out.println("NEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
         IndicesAliasesRequest request = new IndicesAliasesRequest();
 
@@ -521,7 +522,7 @@ public class Manager {
                     lines.addAll(list);
                     lineCount++;
                     if (lines.size() == 10000) {
-                        Runnable workerThread = new VTranscriptProcessThread(lines, RgdIndex.getNewAlias(), geneCache, clusterCount);
+                        Runnable workerThread = new VTranscriptProcessThread(lines, rgdIndex.getNewAlias(), geneCache, clusterCount);
                         try {
                             executor.execute(workerThread);
                         }catch (Exception e){
@@ -535,7 +536,7 @@ public class Manager {
                 }
             }
             if (!lines.isEmpty()) {
-                Runnable workerThread = new VTranscriptProcessThread(lines, RgdIndex.getNewAlias(), geneCache, clusterCount);
+                Runnable workerThread = new VTranscriptProcessThread(lines, rgdIndex.getNewAlias(), geneCache, clusterCount);
                 executor.execute(workerThread);
             }
             System.out.println("TOTAL LINE COUNT OF VCF: " + lineCount);

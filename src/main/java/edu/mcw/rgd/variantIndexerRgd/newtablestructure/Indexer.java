@@ -2,7 +2,7 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
@@ -55,7 +55,7 @@ public class Indexer implements Runnable{
             try {
                 byte[] json =  mapper.writeValueAsBytes(object);
                 String docId = object.getVariant_id() + "-" + object.getSampleId() + "-" + object.getMapKey();
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).id(docId).source(json, XContentType.JSON));
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
             }

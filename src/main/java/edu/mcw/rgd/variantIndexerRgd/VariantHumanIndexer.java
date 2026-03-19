@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.dao.impl.MapDAO;
 import edu.mcw.rgd.datamodel.Chromosome;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
@@ -296,7 +296,7 @@ public class VariantHumanIndexer implements Runnable {
                         try {
                             ObjectMapper mapper=new ObjectMapper();
                             String json =  mapper.writeValueAsString(vi);
-                            bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                            bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).source(json, XContentType.JSON));
                         } catch (JsonProcessingException e) {
                             e.printStackTrace();
                         }

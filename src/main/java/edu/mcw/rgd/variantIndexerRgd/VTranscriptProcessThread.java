@@ -1,7 +1,7 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.services.ClientInit;
@@ -121,7 +121,7 @@ public class VTranscriptProcessThread implements Runnable {
                     ObjectMapper mapper = new ObjectMapper();
                     String json = new String();
                         json = mapper.writeValueAsString(o);
-                        bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                        bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).source(json, XContentType.JSON));
 
 
                 }

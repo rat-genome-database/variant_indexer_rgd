@@ -3,7 +3,7 @@ package edu.mcw.rgd.variantIndexerRgd.dao;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.dao.DataSourceFactory;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Transcript;
 import edu.mcw.rgd.datamodel.Variant;
@@ -348,7 +348,7 @@ public class VariantLoad3 {
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
-                bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).source(json, XContentType.JSON));
              }
 
 
@@ -410,7 +410,7 @@ public class VariantLoad3 {
                 String json = new String();
                 try {
                     json = mapper.writeValueAsString(o);
-                    bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                    bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).source(json, XContentType.JSON));
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }

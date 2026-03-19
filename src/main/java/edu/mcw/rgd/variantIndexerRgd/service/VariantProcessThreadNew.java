@@ -1,6 +1,6 @@
 package edu.mcw.rgd.variantIndexerRgd.service;
 
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.Variant;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
@@ -171,7 +171,7 @@ public class VariantProcessThreadNew implements Runnable {
                 VariantIndex obj=getIndexObject(v, variantTranscripts);
                 com.fasterxml.jackson.databind.ObjectMapper mapper=new com.fasterxml.jackson.databind.ObjectMapper();
                 String json =  mapper.writeValueAsString(obj);
-                IndexRequest request= new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
+                IndexRequest request= new IndexRequest(RgdIndex.getInstance().getNewAlias()).source(json, XContentType.JSON);
                 ClientInit.getClient().index(request, RequestOptions.DEFAULT);
 
             } catch (IOException e) {

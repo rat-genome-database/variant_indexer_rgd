@@ -2,7 +2,7 @@ package edu.mcw.rgd.variantIndexerRgd;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
@@ -97,7 +97,7 @@ public class VariantProcessThread implements Runnable {
             for(VariantIndexObject obj:indexObjects){
                 try {
                      String json =  mapper.writeValueAsString(obj);
-                    bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                    bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).source(json, XContentType.JSON));
 
                 } catch (IOException e) {
                     e.printStackTrace();

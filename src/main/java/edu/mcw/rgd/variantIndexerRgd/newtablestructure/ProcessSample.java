@@ -2,7 +2,7 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
@@ -50,7 +50,7 @@ public class ProcessSample  implements Runnable{
                 try {
                     String json = mapper.writeValueAsString(vi);
                     String docId = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
-                    bulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
+                    bulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).id(docId).source(json, XContentType.JSON));
 
                 } catch (Exception e) {
                     e.printStackTrace();
