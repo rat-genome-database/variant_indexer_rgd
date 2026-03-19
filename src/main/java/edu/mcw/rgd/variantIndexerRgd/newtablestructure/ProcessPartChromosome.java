@@ -22,7 +22,8 @@ public class ProcessPartChromosome implements  Runnable{
         for(VariantIndex vi:indexList) {
             try {
                 String json = Json.serializer().mapper().writeValueAsString(vi);
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                String docId = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
 
             } catch (Exception e) {
                 e.printStackTrace();

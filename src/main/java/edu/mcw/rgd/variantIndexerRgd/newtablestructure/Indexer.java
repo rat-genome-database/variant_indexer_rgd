@@ -54,7 +54,8 @@ public class Indexer implements Runnable{
             VariantIndex object= (VariantIndex) entry.getValue();
             try {
                 byte[] json =  mapper.writeValueAsBytes(object);
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                String docId = object.getVariant_id() + "-" + object.getSampleId() + "-" + object.getMapKey();
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
             }

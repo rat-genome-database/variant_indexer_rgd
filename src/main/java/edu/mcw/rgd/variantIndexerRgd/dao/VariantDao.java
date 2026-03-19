@@ -248,11 +248,11 @@ public class VariantDao extends AbstractDAO {
         return execute(q,speciesTypeKey,chr,mapKey);
     }
     public List<Integer> getUniqueVariantsIds( String chr, int mapKey, int speciesTypeKey) throws Exception {
-        String sql ="select v.rgd_id from variant v, variant_map_data vmd  " +
+        String sql ="select distinct v.rgd_id from variant v, variant_map_data vmd  " +
                 "where v.rgd_id=vmd.rgd_id " +
                 " and v.species_type_key=? " +
                 " and vmd.chromosome=? " +
-                " and vmd.map_key=?";  //Total RECORD COUNT: 1888283; chr:1; map_key:360
+                " and vmd.map_key=?";
         //  VariantMapQuery q=new VariantMapQuery(DataSourceFactory.getInstance().getDataSource("Variant"), sql);
         IntListQuery q=new IntListQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
         return execute(q,speciesTypeKey,chr,mapKey);
@@ -433,7 +433,13 @@ public class VariantDao extends AbstractDAO {
             System.out.println("Queried IDS:"+variantIdsList.size()+"\nIds without transcripts:"+ variantIdsWithoutTranscripts.size());
             if(variantIdsWithoutTranscripts.size()>0) {
                 List<VariantIndex> variantsWithoutTranscripts = getVariantsWithoutTranscripts(mapKey, variantIdsWithoutTranscripts);
-                vrList.addAll(variantsWithoutTranscripts);
+                // Deduplicate: gene_loci and conservation_score joins can produce multiple rows per variant+sample
+                Map<String, VariantIndex> dedupMap = new LinkedHashMap<>();
+                for (VariantIndex vi : variantsWithoutTranscripts) {
+                    String key = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+                    dedupMap.putIfAbsent(key, vi);
+                }
+                vrList.addAll(dedupMap.values());
             }
         }
         System.out.println("varaiants size include no transcript variants: "+ vrList.size());

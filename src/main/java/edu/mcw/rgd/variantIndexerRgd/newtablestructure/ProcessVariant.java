@@ -41,7 +41,8 @@ public class ProcessVariant implements Runnable {
                     try {
                         ObjectMapper mapper = new ObjectMapper();
                         String json = mapper.writeValueAsString(vi);
-                     bulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                        String docId = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+                     bulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

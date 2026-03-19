@@ -28,7 +28,8 @@ public class BulkIndexer implements Runnable {
             VariantIndexUtils.mapSampleDetails(vsd, vi);
             try {
                 byte[] json = Json.serializer().mapper().writeValueAsBytes(vi);
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                String docId = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
             }

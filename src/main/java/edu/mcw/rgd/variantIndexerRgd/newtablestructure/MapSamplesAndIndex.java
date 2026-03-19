@@ -28,7 +28,8 @@ public class MapSamplesAndIndex implements Runnable {
                     try {
                         ObjectMapper mapper=new ObjectMapper();
                         byte[]  json =  mapper.writeValueAsBytes(vi);
-                        BulkIndexProcessor.getInstance().bulkProcessor.add(  new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+                        String docId = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+                        BulkIndexProcessor.getInstance().bulkProcessor.add(  new IndexRequest(RgdIndex.getNewAlias()).id(docId).source(json, XContentType.JSON));
                     } catch (Exception e) {
                        System.out.println( "VARIANT ID:"+vi.getVariant_id());
                         e.printStackTrace();
