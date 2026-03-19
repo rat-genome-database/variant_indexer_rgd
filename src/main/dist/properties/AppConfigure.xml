@@ -13,6 +13,7 @@
                 <value>prod</value>
                 <value>agr</value>
                 <value>someName</value>
+
             </list>
         </property>
        </bean>
