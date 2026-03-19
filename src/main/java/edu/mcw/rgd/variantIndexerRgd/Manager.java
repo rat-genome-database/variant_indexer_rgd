@@ -341,25 +341,28 @@ public class Manager {
         return "OK";
     }
     public boolean switchAlias() throws Exception {
-        System.out.println("NEW ALIAS: " + RgdIndex.getNewAlias() + " || OLD ALIAS:" + RgdIndex.getOldAlias());
+        String newAlias = RgdIndex.getNewAlias();
+        String oldAlias = RgdIndex.getOldAlias();
+        String indexName = rgdIndex.getIndex();
+        System.out.println("NEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
         IndicesAliasesRequest request = new IndicesAliasesRequest();
 
-        if (RgdIndex.getOldAlias() != null) {
+        if (oldAlias != null) {
             IndicesAliasesRequest.AliasActions removeAliasAction =
                     new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.REMOVE)
-                            .index(RgdIndex.getOldAlias())
-                            .alias(RgdIndex.getIndex());
+                            .index(oldAlias)
+                            .alias(indexName);
             IndicesAliasesRequest.AliasActions addAliasAction =
                     new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
-                            .index(RgdIndex.getNewAlias())
-                            .alias(RgdIndex.getIndex());
+                            .index(newAlias)
+                            .alias(indexName);
             request.addAliasAction(removeAliasAction);
             request.addAliasAction(addAliasAction);
         }else{
             IndicesAliasesRequest.AliasActions addAliasAction =
                     new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
-                            .index(RgdIndex.getNewAlias())
-                            .alias(RgdIndex.getIndex());
+                            .index(newAlias)
+                            .alias(indexName);
             request.addAliasAction(addAliasAction);
         }
         AcknowledgedResponse indicesAliasesResponse =
