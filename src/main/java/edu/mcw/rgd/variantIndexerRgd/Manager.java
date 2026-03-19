@@ -53,7 +53,7 @@ import static org.apache.logging.log4j.LogManager.getLogger;
 
 public class Manager {
     private String version;
-    private RgdIndex rgdIndex;
+    private static RgdIndex rgdIndex;
     private static List environments;
     private IndexAdmin admin;
     private int mapKey;
@@ -81,7 +81,7 @@ public class Manager {
        Manager manager= (Manager) bf.getBean("manager");
 
        log.info(manager.version);
-      manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
+      rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
        manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
       try{
 
@@ -114,10 +114,10 @@ public class Manager {
             String index=manager.process+"_"+species+manager.mapKey;
 
             if (environments.contains(manager.env)) {
-                manager.rgdIndex.setIndex(index +"_"+manager.env);
+                rgdIndex.setIndex(index +"_"+manager.env);
                 indices.add(index+"_"+manager.env + "1");
                 indices.add(index + "_"+manager.env + "2");
-                manager.rgdIndex.setIndices(indices);
+               rgdIndex.setIndices(indices);
             }
 
             manager.run(args);
@@ -343,8 +343,8 @@ public class Manager {
         return "OK";
     }
     public void switchAlias() throws Exception {
-        String newAlias = RgdIndex.getNewAlias();
-        String oldAlias = RgdIndex.getOldAlias();
+        String newAlias = rgdIndex.getNewAlias();
+        String oldAlias = rgdIndex.getOldAlias();
         String indexName = RgdIndex.getIndex();
         System.out.println("NEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
         IndicesAliasesRequest request = new IndicesAliasesRequest();
