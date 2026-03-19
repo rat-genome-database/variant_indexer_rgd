@@ -22,38 +22,18 @@ public class ChromosomeThread  implements Runnable{
     @Override
     public void run() {
         ExecutorService executor2 = new MyThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        Runnable variantsNewTableThread= null;
         List<Integer> variantIds = null;
         try {
             variantIds = variantDao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("UNIQUE VAIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
-        Collection[] collections = new Collection[0];
-        try {
-            collections = split(variantIds, 1000);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        System.out.println("UNIQUE VARIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
+        Collection[] collections = VariantIndexUtils.split(variantIds, 1000);
         for (int i = 0; i < collections.length; i++) {
-            variantsNewTableThread=new VariantsNewTableThread(mapKey, (List<Integer>) collections[i]);
+            Runnable variantsNewTableThread=new VariantsNewTableThread(mapKey, (List<Integer>) collections[i]);
             executor2.execute(variantsNewTableThread);
         }
-        executor2.shutdown();
-        while (!executor2.isTerminated()) {}
-    }
-    public Collection[] split(List<Integer> rgdids, int size) throws Exception {
-        int numOfBatches = rgdids.size() / size + 1;
-        Collection[] batches = new Collection[numOfBatches];
-
-        for(int index = 0; index < numOfBatches; ++index) {
-            int count = index + 1;
-            int fromIndex = Math.max((count - 1) * size, 0);
-            int toIndex = Math.min(count * size, rgdids.size());
-            batches[index] = rgdids.subList(fromIndex, toIndex);
-        }
-
-        return batches;
+        VariantIndexUtils.awaitTermination(executor2);
     }
 }

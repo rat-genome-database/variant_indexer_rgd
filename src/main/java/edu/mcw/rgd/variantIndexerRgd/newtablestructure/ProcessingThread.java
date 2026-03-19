@@ -31,9 +31,7 @@ public class ProcessingThread implements Runnable {
         System.out.println(Thread.currentThread().getName()+ "\tMapKey:"+mapKey + "\tchromosome:"+chromosome +"\tSAMPLES:"+samples.size());
         ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
 
-      //  System.out.println("SAMPLES SIZE: "+samples.size());
         for(Sample s:samples) {
-            // int sampleId = 911;
             int sampleId = s.getId();
             Variants variants = new Variants();
             List<VariantData> vrs = null;
@@ -43,14 +41,13 @@ public class ProcessingThread implements Runnable {
                 e.printStackTrace();
             }
 
-            if(vrs!=null && vrs.size()>0) {
+            if(vrs!=null && !vrs.isEmpty()) {
                 System.out.println("Variants SIZE: " + vrs.size());
                 Runnable workerThread = new Indexer(vrs, geneLoci,mapKey,  chromosome);
                 executor.execute(workerThread);
             }
         }
-        executor.shutdown();
-        while (!executor.isTerminated()) {}
+        VariantIndexUtils.awaitTermination(executor);
         System.out.println("***********"+Thread.currentThread().getName()+ "\tMapKey:"+mapKey + "\tchromosome:"+chromosome+ "\tEND ...."+"\t"+ new Date()+"*********");
 
     }

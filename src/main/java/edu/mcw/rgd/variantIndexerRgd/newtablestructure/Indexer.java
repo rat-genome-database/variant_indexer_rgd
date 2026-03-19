@@ -4,43 +4,29 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
-import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.xcontent.XContentType;
 
-
-import java.net.UnknownHostException;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 
 public class Indexer implements Runnable{
     private List<VariantData> vrs;
-    private Map<Long, List<String>> geneLoci;
+    private java.util.Map<Long, List<String>> geneLoci;
     private int mapKey;
-    //private int sampleId;
     String chromosome;
     public Indexer(){}
-    public Indexer(List<VariantData> vrs,  Map<Long, List<String>> geneLoci, int mapKey,String chromosome){
+    public Indexer(List<VariantData> vrs,  java.util.Map<Long, List<String>> geneLoci, int mapKey,String chromosome){
         this.vrs=vrs;
         this.geneLoci=geneLoci;
         this.mapKey=mapKey;
         this.chromosome=chromosome;
-      //  this.sampleId=sampleId;
     }
     @Override
     public void run() {
-        Map<Integer, VariantIndex> processedMap=new HashMap<>();
+        java.util.Map<Integer, VariantIndex> processedMap=new HashMap<>();
         for(VariantData vd: vrs){
             VariantIndex v =null;
             if(processedMap.get(vd.getVariantRgdId())==null){
@@ -62,63 +48,17 @@ public class Indexer implements Runnable{
         System.out.println(Thread.currentThread().getName()+ "\tMapKey:"+mapKey + "\tchromosome:"+chromosome+  "\tEND ....");
 
     }
-    void index(Map<Integer, VariantIndex>  processedMap){
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
+    void index(java.util.Map<Integer, VariantIndex>  processedMap){
+        ObjectMapper mapper = new ObjectMapper();
+        for(Entry entry:processedMap.entrySet()){
+            VariantIndex object= (VariantIndex) entry.getValue();
+            try {
+                byte[] json =  mapper.writeValueAsBytes(object);
+                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
             }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                (request, bulkListener) ->
-                {
-                    try {
-                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                    } catch (UnknownHostException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
-
-                for(Entry entry:processedMap.entrySet()){
-                    VariantIndex object= (VariantIndex) entry.getValue();
-                   // System.out.println(object.getChromosome()+"\t"+object.getStartPos());
-                    try {
-                        ObjectMapper mapper=new ObjectMapper();
-                        byte[] json =  mapper.writeValueAsBytes(object);
-                        bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                    } catch (JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
-                }
-        try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            bulkProcessor.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
-            bulkProcessor.close();
         }
-
     }
      VariantIndex mapVariant(VariantData vd){
         VariantIndex v=new VariantIndex();
@@ -143,18 +83,17 @@ public class Indexer implements Runnable{
         v.setGenicStatus(vd.getGenicStatus());
         v.setMapKey(vd.getMapKey());
         v.setAnalysisName(vd.getLocationName());
-       // v.setHGVSNAME();
         v.setRsId(vd.getRsId());
         v.setClinvarId(vd.getClinvarId());
         List<String> conScores= new ArrayList<>();
         conScores.add(String.valueOf(vd.getConservationScore()));
-        if(conScores.size()>0)
+        if(!conScores.isEmpty())
         v.setConScores(conScores);
         v.setRegionName(getRegionNames(vd.getStartPos()));
         v.setRegionNameLc(getRegionNamesLC(vd.getStartPos()));
         VariantTranscript vt=mapTranscriptObject(vd);
         List<VariantTranscript> vts=new ArrayList<>(Arrays.asList(vt));
-        if(vts.size()>0)
+        if(!vts.isEmpty())
          v.setVariantTranscripts(vts);
        return v;
     }
@@ -177,30 +116,23 @@ public class Indexer implements Runnable{
         return t;
     }
     boolean transcriptExists(int transcriptRgdId, List<VariantTranscript> vts){
-        boolean flag=false;
         for(VariantTranscript t:vts){
             if(transcriptRgdId==t.getTranscriptRgdId()){
-                flag=true;
-                break;
+                return true;
             }
         }
-        return flag;
+        return false;
     }
    List<String> getRegionNames(long startPos){
-        List<String> regionNames= new ArrayList<>();
-               regionNames= geneLoci.get(startPos);
-
-           return regionNames;
-
+       return geneLoci.get(startPos);
     }
      List<String> getRegionNamesLC(long startPos){
         List<String> regionNames=geneLoci.get(startPos);
         List<String> regionNameLC = new ArrayList<>();
-        if(regionNames!=null && regionNames.size()!=0) {
+        if(regionNames!=null && !regionNames.isEmpty()) {
             for (String name : regionNames) {
                 regionNameLC.add(name.toLowerCase());
             }
-
         }
         return regionNameLC;
     }

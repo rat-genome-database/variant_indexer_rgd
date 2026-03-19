@@ -1,10 +1,7 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
 
-
 import edu.mcw.rgd.dao.DataSourceFactory;
-
-import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.dao.impl.SampleDAO;
 import edu.mcw.rgd.datamodel.*;
 
@@ -42,9 +39,7 @@ import java.io.*;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
@@ -69,7 +64,7 @@ public class Manager {
     private String command;     //update or reindex
     private String process;     // transcripts or variants
     private String env;     // dev or test or prod
-    List<String> chromosomes;//loading to es or db
+    List<String> chromosomes;
 
     Map<Integer, List<BigDecimal>> conScoresMap=new HashMap<>();
     VariantLoad3 loader=new VariantLoad3();
@@ -85,8 +80,6 @@ public class Manager {
        Manager manager= (Manager) bf.getBean("manager");
 
        log.info(manager.version);
-      //  ESClient es= (ESClient) bf.getBean("client");
-     //   BulkIndexProcessor bulkIndexProcessor= (BulkIndexProcessor) bf.getBean("bulkProcessor");
        manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
        manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
       try{
@@ -107,7 +100,6 @@ public class Manager {
           }
           if(manager.fromChr!=null &&  manager.toChr==null) {
                 chromosomes.add(manager.fromChr);
-
           }
           if(manager.fromChr!=null && manager.toChr!=null) {
               System.out.println("FROM CHR:" + manager.fromChr + "\tTO CHR: " + manager.toChr);
@@ -116,16 +108,8 @@ public class Manager {
               }
           }
           manager.chromosomes=chromosomes;
-         /*   if(manager.mapKey==17){
-                manager.fileName=args[6];
 
-
-            }*/
-          String species= new String();
-          if( SpeciesType.getCommonName(manager.speciesTypeKey).contains(" "))
-              species=    SpeciesType.getCommonName(manager.speciesTypeKey).toLowerCase().replace(" ","");
-          else
-              species=    SpeciesType.getCommonName(manager.speciesTypeKey).toLowerCase();
+          String species = SpeciesType.getCommonName(manager.speciesTypeKey).toLowerCase().replace(" ", "");
             String index=manager.process+"_"+species+manager.mapKey;
 
             if (environments.contains(manager.env)) {
@@ -152,7 +136,6 @@ public class Manager {
 
     public void run(String[] args) throws Exception {
         long start = System.currentTimeMillis();
-        VariantDao vdao=new VariantDao();
         String species= SpeciesType.getCommonName(speciesTypeKey);
         if(command.equalsIgnoreCase("reindex"))
           admin.createIndex("", species);
@@ -160,13 +143,9 @@ public class Manager {
             admin.updateIndex();
 
         switch (speciesTypeKey) {
-          /*  case 1:
-                processHumanVCF();
-                break;*/
             case 1:
             case 2:
             case 3:
-                System.out.println("SPECIES: "+ speciesTypeKey);
             case 6:
             case 9:
             case 13:
@@ -175,14 +154,12 @@ public class Manager {
 
                 System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
 
-                       ExecutorService executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-                       Runnable chromosomeThread= null;
+                       MyThreadPoolExecutor executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        for (String chr : chromosomes) {
-                          chromosomeThread=new ChromosomeThread(chr, mapKey,speciesTypeKey);
+                          Runnable chromosomeThread=new ChromosomeThread(chr, mapKey,speciesTypeKey);
                           executor2.execute(chromosomeThread);
                        }
-                       executor2.shutdown();
-                       while (!executor2.isTerminated()) {}
+                       VariantIndexUtils.awaitTermination(executor2);
 
                 break;
             default:
@@ -197,8 +174,8 @@ public class Manager {
            log.info(clusterStatus + ", refusing to continue with operations");
         } else {
             if(command.equalsIgnoreCase("reindex")) {
-                System.out.println("CLUSTER STATUR:"+ clusterStatus+". Switching Alias...");
-                log.info("CLUSTER STATUR:"+ clusterStatus+". Switching Alias...");
+                System.out.println("CLUSTER STATUS:"+ clusterStatus+". Switching Alias...");
+                log.info("CLUSTER STATUS:"+ clusterStatus+". Switching Alias...");
                 switchAlias();
             }
         }
@@ -206,19 +183,6 @@ public class Manager {
         System.out.println(" - " + Utils.formatElapsedTime(start, end));
         log.info(" - " + Utils.formatElapsedTime(start, end));
         System.out.println("CLIENT IS CLOSED");
-    }
-    public Collection[] split(List<Integer> rgdids, int size) throws Exception {
-        int numOfBatches = rgdids.size() / size + 1;
-        Collection[] batches = new Collection[numOfBatches];
-
-        for(int index = 0; index < numOfBatches; ++index) {
-            int count = index + 1;
-            int fromIndex = Math.max((count - 1) * size, 0);
-            int toIndex = Math.min(count * size, rgdids.size());
-            batches[index] = rgdids.subList(fromIndex, toIndex);
-        }
-
-        return batches;
     }
 
     public List<VariantIndexObject> getIndexObjects(List<CommonFormat2Line> list, GeneCache geneCache){
@@ -246,11 +210,9 @@ public class Manager {
                 }
             }
             if (line.getRefNuc()!=null && !loader.alleleIsValid(line.getRefNuc())) {
-                //   System.out.println(" *** Ref Nucleotides must be A,C,G,T,N");
                 continue;
             }
             if (line.getVarNuc()!=null && !loader.alleleIsValid(line.getVarNuc())) {
-                //     System.out.println(" *** Var Nucleotides must be A,C,G,T,N");
                 continue;
             }
 
@@ -280,14 +242,15 @@ public class Manager {
             int readCountT = line.getCountT();
 
             int totalDepth = 0;
-            String totalDepthStr = line.getTotalDepth().toString();
-            if (totalDepthStr == null || totalDepthStr.isEmpty()) {
+            Integer totalDepthObj = line.getTotalDepth();
+            if (totalDepthObj == null || totalDepthObj == 0) {
                 if (isSnv)
                     totalDepth = readCountA + readCountC + readCountG + readCountT;
                 else
                     totalDepth = readDepth;
-            } else
-                totalDepth = Integer.parseInt(totalDepthStr);
+            } else {
+                totalDepth = totalDepthObj;
+            }
 
             // total reads called (AD field) vs total reads analyzed (DP field): 100*readDepth/totalDepth
             int qualityScore = 0;
@@ -303,7 +266,6 @@ public class Manager {
             md.setReferenceNucleotide(line.getRefNuc());
             md.setStartPos(line.getPos());
             md.setVariantNucleotide(line.getVarNuc());
-         //   md.setConScores(conScores);
             md.setGenicStatus(genicStatus);
             md.setVariantType(variantType);
             if (!isSnv) {
@@ -312,7 +274,7 @@ public class Manager {
             md.setEndPos(endPos);
             md.setRsId(line.getRsId());
             List<String> regionNames=geneLociMap.get(md.getStartPos());
-            if(regionNames!=null && regionNames.size()!=0) {
+            if(regionNames!=null && !regionNames.isEmpty()) {
                 indexObject.setRegionName(regionNames);
                 List<String> regionNameLC = new ArrayList<>();
                 for (String name : regionNames) {
@@ -320,9 +282,9 @@ public class Manager {
                 }
                 indexObject.setRegionNameLc(regionNameLC);
             }
-            if(variantTranscripts.size()!=0)
+            if(!variantTranscripts.isEmpty())
                 indexObject.setVariantTranscripts(variantTranscripts);
-            md.setMapKey(17);
+            md.setMapKey(mapKey);
 
             for (String s : line.getStrainList()) {
                 Sample sample = VariantIndexerThread.sampleIdMap.get(s);
@@ -338,9 +300,8 @@ public class Manager {
                 if (isSnv) {
                     score = zygosity.computeVariant(readCountA, readCountC, readCountG, readCountT, sample.getGender(), md, v);
                 } else {
-                    //         // parameter tweaking for indels
                     zygosity.computeZygosityStatus(alleleDepth, readDepth, sample.getGender(), md,v);
-//
+
                     // compute zygosity ref allele, if possible
                     if (line.getRefNuc()!=null && line.getRefNuc().equals("A")) {
                         v.setZygosityRefAllele(readCountA > 0 ? "Y" : "N");
@@ -367,163 +328,12 @@ public class Manager {
         return indexObjects;
 
     }
- /*   public List<VariantIndex> getIndexObjects(List<CommonFormat2Line> list, GeneCache geneCache){
-        List<VariantIndex> objects= new ArrayList<>();
-        for (CommonFormat2Line line : list) {
 
-            boolean isSnv = !Utils.isStringEmpty(line.getRefNuc()) && !Utils.isStringEmpty(line.getVarNuc());
-            long endPos = 0;
-            if (isSnv) {
-                endPos = line.getPos() + 1;
-            } else {
-                // insertions
-                if (Utils.isStringEmpty(line.getRefNuc())) {
-                    endPos = line.getPos();
-                }
-                // deletions
-                else if (Utils.isStringEmpty(line.getVarNuc())) {
-                    endPos = line.getPos() + line.getRefNuc().length();
-                } else {
-                    System.out.println("Unexpected var type");
-                }
-            }
-            if (line.getRefNuc()!=null && !loader.alleleIsValid(line.getRefNuc())) {
-                //   System.out.println(" *** Ref Nucleotides must be A,C,G,T,N");
-                continue;
-            }
-            if (line.getVarNuc()!=null && !loader.alleleIsValid(line.getVarNuc())) {
-                //     System.out.println(" *** Var Nucleotides must be A,C,G,T,N");
-                continue;
-            }
-
-
-            List<BasicTranscriptData> variantTranscripts = new ArrayList<>();
-            List<BigDecimal> conScores= new ArrayList<>();
-            try {
-                variantTranscripts.addAll(loader.getVariantTranscripts(line.getPos(), line.getChr(), line.getRefNuc(), line.getVarNuc()));
-                if(conScoresMap.get(line.getPos())!=null){
-                    conScores.addAll(conScoresMap.get(line.getPos()));
-                }else {
-                    conScores.addAll(loader.getConservationScores(line.getChr(), line.getPos()));
-                    conScoresMap.put(line.getPos(), conScores);
-                }
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            // NOTE: for snvs, only ACGT counts are provided
-            //    for indels, only allele count is provided
-            int alleleDepth = line.getAlleleDepth(); // from AD field: how many times allele was called
-            int readDepth = line.getReadDepth(); // from AD field: how many times all alleles were called
-            int readCountA = line.getCountA();
-            int readCountC = line.getCountC();
-            int readCountG = line.getCountG();
-            int readCountT = line.getCountT();
-
-            int totalDepth = 0;
-            String totalDepthStr = line.getTotalDepth().toString();
-            if (totalDepthStr == null || totalDepthStr.isEmpty()) {
-                if (isSnv)
-                    totalDepth = readCountA + readCountC + readCountG + readCountT;
-                else
-                    totalDepth = readDepth;
-            } else
-                totalDepth = Integer.parseInt(totalDepthStr);
-
-            // total reads called (AD field) vs total reads analyzed (DP field): 100*readDepth/totalDepth
-            int qualityScore = 0;
-            if (totalDepth > 0) {
-                qualityScore = (100 * readDepth + totalDepth / 2) / totalDepth;
-            }
-
-           String variantType= loader.determineVariantType(line.getRefNuc(), line.getVarNuc());
-
-            List<Integer> geneRgdIds = geneCache.getGeneRgdIds(line.getPos());
-            String genicStatus = !geneRgdIds.isEmpty() ? "GENIC" : "INTERGENIC";
-            for (String s : line.getStrainList()) {
-                Sample sample = VariantIndexerThread.sampleIdMap.get(s);
-
-                VariantIndex v = new VariantIndex();
-                v.setChromosome(line.getChr());
-                v.setRefNuc(line.getRefNuc());
-                v.setStartPos(line.getPos());
-                v.setTotalDepth(line.getTotalDepth());
-                v.setVarFreq(line.getAlleleDepth());
-                v.setVarNuc(line.getVarNuc());
-                v.setSampleId(sample.getId());
-                v.setAnalysisName(sample.getAnalysisName());
-                v.setPatientId(sample.getPatientId());
-                v.setGender(sample.getGender());
-                v.setQualityScore(qualityScore);
-                v.setHGVSNAME(line.getHgvsName());
-                v.setStrainRgdId(sample.getStrainRgdId());
-                v.setVariantType(variantType);
-                v.setConScores(conScores);
-                v.setGenicStatus(genicStatus);
-                if (!isSnv) {
-                    v.setPaddingBase(line.getPaddingBase());
-                }
-
-                // Determine the ending position
-
-                v.setEndPos(endPos);
-
-                int score = 0;
-                if (isSnv) {
-                    score = zygosity.computeVariant(readCountA, readCountC, readCountG, readCountT, sample.getGender(), v);
-                } else {
-                    //         // parameter tweaking for indels
-                    zygosity.computeZygosityStatus(alleleDepth, readDepth, sample.getGender(), v);
-//
-                    // compute zygosity ref allele, if possible
-                    if (line.getRefNuc()!=null && line.getRefNuc().equals("A")) {
-                        v.setZygosityRefAllele(readCountA > 0 ? "Y" : "N");
-                    } else if (line.getRefNuc()!=null && line.getRefNuc().equals("C")) {
-                        v.setZygosityRefAllele(readCountC > 0 ? "Y" : "N");
-                    } else if (line.getRefNuc()!=null && line.getRefNuc().equals("G")) {
-                        v.setZygosityRefAllele(readCountG > 0 ? "Y" : "N");
-                    } else if (line.getRefNuc()!=null && line.getRefNuc().equals("T")) {
-                        v.setZygosityRefAllele(readCountT > 0 ? "Y" : "N");
-                    }
-
-                    if (alleleDepth == 0)
-                        score = 0;
-                    else
-                        score = (int) v.getZygosityPercentRead();
-                }
-                if (score == 0) {
-                    continue;
-                }
-
-
-                v.setRsId(line.getRsId());
-                List<String> regionNames=geneLociMap.get(v.getStartPos());
-                if(regionNames!=null && regionNames.size()!=0) {
-                    v.setRegionName(regionNames);
-                    List<String> regionNameLC = new ArrayList<>();
-                    for (String name : regionNames) {
-                        regionNameLC.add(name.toLowerCase());
-                    }
-                    v.setRegionNameLc(regionNameLC);
-                }
-                if(variantTranscripts!=null && variantTranscripts.size()!=0)
-                   v.setVariantTranscripts(variantTranscripts);
-                v.setMapKey(17);
-                objects.add(v);
-            }
-
-        }
-        return objects;
-      //  return null;
-    }
-*/
     public String getClusterHealth(String index) throws Exception {
 
         ClusterHealthRequest request = new ClusterHealthRequest(index);
         ClusterHealthResponse response = ClientInit.getClient().cluster().health(request, RequestOptions.DEFAULT);
         System.out.println(response.getStatus().name());
-   //     log.info("CLUSTER STATE: " + response.getStatus().name());
         if (response.isTimedOut()) {
             return   "cluster state is " + response.getStatus().name();
         }
@@ -531,55 +341,32 @@ public class Manager {
         return "OK";
     }
     public boolean switchAlias() throws Exception {
-        System.out.println("NEEW ALIAS: " + RgdIndex.getNewAlias() + " || OLD ALIAS:" + RgdIndex.getOldAlias());
+        System.out.println("NEW ALIAS: " + RgdIndex.getNewAlias() + " || OLD ALIAS:" + RgdIndex.getOldAlias());
         IndicesAliasesRequest request = new IndicesAliasesRequest();
 
-
         if (RgdIndex.getOldAlias() != null) {
-
             IndicesAliasesRequest.AliasActions removeAliasAction =
                     new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.REMOVE)
                             .index(RgdIndex.getOldAlias())
-                            .alias(rgdIndex.getIndex());
+                            .alias(RgdIndex.getIndex());
             IndicesAliasesRequest.AliasActions addAliasAction =
                     new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
                             .index(RgdIndex.getNewAlias())
-                            .alias(rgdIndex.getIndex());
+                            .alias(RgdIndex.getIndex());
             request.addAliasAction(removeAliasAction);
             request.addAliasAction(addAliasAction);
-        //    log.info("Switched from " + RgdIndex.getOldAlias() + " to  " + RgdIndex.getNewAlias());
-
         }else{
             IndicesAliasesRequest.AliasActions addAliasAction =
                     new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
                             .index(RgdIndex.getNewAlias())
-                            .alias(rgdIndex.getIndex());
+                            .alias(RgdIndex.getIndex());
             request.addAliasAction(addAliasAction);
-        //    log.info(rgdIndex.getIndex() + " pointed to " + RgdIndex.getNewAlias());
         }
         AcknowledgedResponse indicesAliasesResponse =
                 ClientInit.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
 
         return  true;
 
-    }
-    public static Map<Long, List<String>> getGeneLociMap(int mapKey, String chromosome) throws Exception {
-        GeneLociDAO dao= new GeneLociDAO();
-        List<GeneLoci> loci=dao.getGeneLociByMapKeyAndChr(mapKey, chromosome);
-        Map<Long, List<String>> positionGeneMap=new HashMap<>();
-
-        for(GeneLoci g: loci){
-            List<String> list=new ArrayList<>();
-            if(positionGeneMap.get(g.getPosition())!=null){
-               list=positionGeneMap.get(g.getPosition());
-
-            }
-            list.add(g.getGeneSymbols());
-            positionGeneMap.put(g.getPosition(), list);
-        }
-        System.out.println("GeneLoci Map size of CHR-:"+ chromosome+"\t"+ positionGeneMap.size());
-
-        return positionGeneMap;
     }
 
     public static Map<String, Sample> getSampleIdMap(int mapKey,  int rowlimit) throws Exception {
@@ -590,17 +377,13 @@ public class Manager {
                 "STU", "TSI", "YRI"
         ));
         List<Sample> samples = new ArrayList<>();
-        if(populations.size()>0){
-           for(String population:populations) {
-               if (population != null) {
-                   if (rowlimit > 0) {
-                       samples .addAll(sdao.getLimitedSamplesByPopulation(mapKey, population.toUpperCase(), rowlimit));
-                   } else
-                       samples = sdao.getSamplesByMapKey(mapKey, population.toUpperCase());
-               }
-           }
-        }else {
-            samples = sdao.getSamplesByMapKey(mapKey);
+        for(String population:populations) {
+            if (population != null) {
+                if (rowlimit > 0) {
+                    samples.addAll(sdao.getLimitedSamplesByPopulation(mapKey, population.toUpperCase(), rowlimit));
+                } else
+                    samples = sdao.getSamplesByMapKey(mapKey, population.toUpperCase());
+            }
         }
         java.util.Map<String, Sample> sampleIdMap = new HashMap<>();
         System.out.println("SAMPLES SIZE:" +samples.size());
@@ -616,7 +399,6 @@ public class Manager {
                     substr = analysisName.substring(analysisName.indexOf("(") + 1);
 
             }
-        //    System.out.println("sample: "+ substr+ "\tAnalysisName: "+analysisName);
             sampleIdMap.put(substr, s);
         }
         return sampleIdMap;
@@ -670,8 +452,6 @@ public class Manager {
         this.speciesTypeKey = speciesTypeKey;
     }
 
-
-
     public String getFileName() {
         return fileName;
     }
@@ -713,7 +493,7 @@ public class Manager {
     }
 
    void  processHumanVCF() throws Exception {
-        geneLociMap = getGeneLociMap(mapKey, chr); //args[4]=chromosome
+        geneLociMap = VariantIndexUtils.getGeneLociMap(mapKey, chr);
         File file = new File(fileName);
         GeneCache geneCache = new GeneCache();
         geneCache.loadCache(mapKey, chr, DataSourceFactory.getInstance().getDataSource());
@@ -724,7 +504,6 @@ public class Manager {
             if (file.getName().endsWith(".txt.gz") || file.getName().endsWith(".vcf.gz")) {
                 reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(file))));
             } else {
-                // System.out.println("FILE: "+ file);
                 reader = new BufferedReader(new FileReader(file));
             }
             String line;
@@ -733,7 +512,7 @@ public class Manager {
             int strainCount = 0;
             List<CommonFormat2Line> lines = new ArrayList<>();
             int clusterCount = 0;
-            ExecutorService executor= new MyThreadPoolExecutor(10,10,0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+            MyThreadPoolExecutor executor= new MyThreadPoolExecutor(10,10,0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
             while ((line = reader.readLine()) != null) {
                 // skip comment line
                 if (line.startsWith("#")) {
@@ -744,17 +523,14 @@ public class Manager {
                     VariantIndexerThread indexer = new VariantIndexerThread();
                     List<CommonFormat2Line> list = indexer.run(line, strainCount, header, geneCache, process);
                     lines.addAll(list);
-                    //   indexer.run();
                     lineCount++;
                     if (lines.size() == 10000) {
                         Runnable workerThread = new VTranscriptProcessThread(lines, RgdIndex.getNewAlias(), geneCache, clusterCount);
                         try {
                             executor.execute(workerThread);
-                        }catch (RejectedExecutionException e){
+                        }catch (Exception e){
                             log.error("REJECTED AT LINE COUNT:"+ lineCount);
                             log.error(e.getMessage());
-                                           /* Thread.sleep(10000);
-                                            executor.execute(workerThread);*/
                         }
                         lines = new ArrayList<>();
                         clusterCount = clusterCount + 1;
@@ -762,17 +538,14 @@ public class Manager {
                     }
                 }
             }
-            if (lines.size() > 0) {
+            if (!lines.isEmpty()) {
                 Runnable workerThread = new VTranscriptProcessThread(lines, RgdIndex.getNewAlias(), geneCache, clusterCount);
                 executor.execute(workerThread);
             }
             System.out.println("TOTAL LINE COUNT OF VCF: " + lineCount);
-            // cleanup
             reader.close();
-            executor.shutdown();
-            while (!executor.isTerminated()) {}
+            VariantIndexUtils.awaitTermination(executor);
         }else if(process.equalsIgnoreCase("variants")) {
-            //   VariantIndexerThread.sampleIdMap = getSampleIdMap(17, args[6]);
             VariantIndexerThread.sampleIdMap = getSampleIdMap(mapKey, 5);
             String line;
             int lineCount = 0;
@@ -782,13 +555,11 @@ public class Manager {
             List<CommonFormat2Line> lines = new ArrayList<>();
             int clusterCount = 0;
             VariantIndexerThread indexer=new VariantIndexerThread();
-            ExecutorService executor= new MyThreadPoolExecutor(10,10,0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+            MyThreadPoolExecutor executor= new MyThreadPoolExecutor(10,10,0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
             List<VariantIndexObject> indexObjects= new ArrayList<>();
             BufferedReader reader;
             if (file.getName().endsWith(".txt.gz") || file.getName().endsWith(".vcf.gz")) {
-
                 reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(file))));
-
             } else {
                 reader = new BufferedReader(new FileReader(file));
             }
@@ -797,23 +568,17 @@ public class Manager {
                 // skip comment line
                 if (line.startsWith("#")) {
                     header = line.substring(1).split("[\\t]", -1);
-
                     strainCount = header.length - 9;
-
                 } else {
                     List<CommonFormat2Line> list = indexer.run(line, strainCount, header, geneCache, process);
                     indexObjects.addAll(getIndexObjects(list, geneCache));
                     lineCount++;
 
-
-                    //   System.out.println("INDEX OBJECT SIZE: "+ indexObjects.size());
                     if (indexObjects.size() >= 1000) {
                         Runnable workerThread = new VariantProcessThread(indexObjects, strainCount, header, geneCache, process, clusterCount);
                         try {
                             executor.execute(workerThread);
-
-                        } catch (RejectedExecutionException e) {
-                            Thread.sleep(10000);
+                        } catch (Exception e) {
                             e.printStackTrace();
                             System.err.println("REJECTED. Restarting thread...");
                             log.info("REJECTED. Restarting thread..."+"\n"+e.getMessage());
@@ -825,37 +590,14 @@ public class Manager {
                     }
                 }
             }
-            if (indexObjects.size() > 0 && indexObjects.size()<1000) {
+            if (!indexObjects.isEmpty()) {
                 Runnable workerThread = new VariantProcessThread(indexObjects, strainCount, header, geneCache,process, clusterCount );
                 executor.execute(workerThread);
             }
             System.out.println("TOTAL LINE COUNT OF VCF: " + lineCount);
-            executor.shutdown();
-            while (!executor.isTerminated()) {}
+            VariantIndexUtils.awaitTermination(executor);
             reader.close();
         }
         System.out.println("Finished all threads: " + new Date());
-    }
-
-
-    public String getConScoreTable(int mapKey, String genicStatus ) {
-        switch(mapKey) {
-            case 17:
-                return " B37_CONSCORE_PART_IOT ";
-            case 38:
-                return " CONSERVATION_SCORE_HG38 ";
-            case 60:
-                if (genicStatus.equalsIgnoreCase("GENIC")) {
-                    return " CONSERVATION_SCORE_GENIC ";
-                }
-
-                return " CONSERVATION_SCORE ";
-            case 70:
-                return " CONSERVATION_SCORE_5 ";
-            case 360:
-                return " CONSERVATION_SCORE_6 ";
-            default:
-                return " CONSERVATION_SCORE_6 ";
-        }
     }
 }

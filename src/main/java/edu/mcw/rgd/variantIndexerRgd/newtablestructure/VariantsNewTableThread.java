@@ -2,13 +2,9 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 public class VariantsNewTableThread implements Runnable{
     private List<Integer> variantIds;
@@ -21,21 +17,14 @@ public class VariantsNewTableThread implements Runnable{
     }
     @Override
     public void run() {
-
-        ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        Runnable workerThread= null;
         List<VariantIndex> indexList = new ArrayList<>();
         try {
             indexList = variantDao.getVariantsNewTbaleStructure(mapKey, variantIds);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        //   workerThread = new ProcessPartChromosome(list,mapKey);
-        if (indexList.size() > 0) {
-            workerThread = new ProcessPartChromosome(indexList);
-            executor.execute(workerThread);
+        if (!indexList.isEmpty()) {
+            new ProcessPartChromosome(indexList).run();
         }
-        executor.shutdown();
-        while (!executor.isTerminated()) {}
     }
 }
