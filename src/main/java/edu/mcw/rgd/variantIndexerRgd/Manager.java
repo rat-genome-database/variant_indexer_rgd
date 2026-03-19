@@ -27,6 +27,7 @@ import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
+import org.elasticsearch.client.Client;
 import org.elasticsearch.client.RequestOptions;
 
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -52,7 +53,7 @@ import static org.apache.logging.log4j.LogManager.getLogger;
 
 public class Manager {
     private String version;
-    private RgdIndex rgdIndex;
+//    private RgdIndex rgdIndex;
     private static List environments;
     private IndexAdmin admin;
     private int mapKey;
@@ -80,7 +81,7 @@ public class Manager {
        Manager manager= (Manager) bf.getBean("manager");
 
        log.info(manager.version);
-       manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
+//       manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
        manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
       try{
 
@@ -113,21 +114,22 @@ public class Manager {
             String index=manager.process+"_"+species+manager.mapKey;
 
             if (environments.contains(manager.env)) {
-                manager.rgdIndex.setIndex(index +"_"+manager.env);
+                RgdIndex.setIndex(index +"_"+manager.env);
                 indices.add(index+"_"+manager.env + "1");
                 indices.add(index + "_"+manager.env + "2");
-                manager.rgdIndex.setIndices(indices);
+                RgdIndex.setIndices(indices);
             }
 
             manager.run(args);
 
 
         }catch (Exception e){
-
         manager.bulkIndexProcessor.destroy();
+
           ClientInit.destroy();
             e.printStackTrace();
         }
+
         manager.bulkIndexProcessor.destroy();
 
         ClientInit.destroy();
@@ -340,10 +342,10 @@ public class Manager {
 
         return "OK";
     }
-    public boolean switchAlias() throws Exception {
+    public void switchAlias() throws Exception {
         String newAlias = RgdIndex.getNewAlias();
         String oldAlias = RgdIndex.getOldAlias();
-        String indexName = rgdIndex.getIndex();
+        String indexName = RgdIndex.getIndex();
         System.out.println("NEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
         IndicesAliasesRequest request = new IndicesAliasesRequest();
 
@@ -368,7 +370,6 @@ public class Manager {
         AcknowledgedResponse indicesAliasesResponse =
                 ClientInit.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
 
-        return  true;
 
     }
 
@@ -413,14 +414,6 @@ public class Manager {
 
     public String getVersion() {
         return version;
-    }
-
-    public RgdIndex getRgdIndex() {
-        return rgdIndex;
-    }
-
-    public void setRgdIndex(RgdIndex rgdIndex) {
-        this.rgdIndex = rgdIndex;
     }
 
     public void setEnvironments(List environments) {
