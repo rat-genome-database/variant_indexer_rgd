@@ -2,7 +2,7 @@
 <beans>
     <bean id="manager" class="edu.mcw.rgd.variantIndexerRgd.Manager">
         <property name="version" value="Variant Indexer v.0.1.0 Nov 14, 2019"/>
-<!--        <property name="rgdIndex" ref="rgdIndex"/>-->
+        <property name="rgdIndex" ref="rgdIndex"/>
         <property name="admin" ref="admin"/>
         <property name="environments">
 

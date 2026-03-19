@@ -53,7 +53,7 @@ import static org.apache.logging.log4j.LogManager.getLogger;
 
 public class Manager {
     private String version;
-//    private RgdIndex rgdIndex;
+    private RgdIndex rgdIndex;
     private static List environments;
     private IndexAdmin admin;
     private int mapKey;
@@ -81,7 +81,7 @@ public class Manager {
        Manager manager= (Manager) bf.getBean("manager");
 
        log.info(manager.version);
-//       manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
+      manager.rgdIndex= (RgdIndex) bf.getBean("rgdIndex");
        manager.bulkIndexProcessor=BulkIndexProcessor.getInstance();
       try{
 
@@ -114,10 +114,10 @@ public class Manager {
             String index=manager.process+"_"+species+manager.mapKey;
 
             if (environments.contains(manager.env)) {
-                RgdIndex.setIndex(index +"_"+manager.env);
+                manager.rgdIndex.setIndex(index +"_"+manager.env);
                 indices.add(index+"_"+manager.env + "1");
                 indices.add(index + "_"+manager.env + "2");
-                RgdIndex.setIndices(indices);
+                manager.rgdIndex.setIndices(indices);
             }
 
             manager.run(args);
@@ -595,5 +595,8 @@ public class Manager {
             reader.close();
         }
         System.out.println("Finished all threads: " + new Date());
+    }
+
+    public void setRgdIndex(RgdIndex rgdIndex) {
     }
 }
