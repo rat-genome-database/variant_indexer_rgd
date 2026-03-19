@@ -5,6 +5,8 @@ apply plugin: 'java'
 mainClassName = "edu.mcw.rgd.variantIndexerRgd.Manager"
 applicationDefaultJvmArgs = ["-Dgreeting.language=en"]
 String myAppName="variant_indexer_rgd"
+sourceCompatibility = 17
+targetCompatibility = 17
 repositories {
     mavenCentral()
 }
