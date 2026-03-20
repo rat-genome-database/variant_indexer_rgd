@@ -10,9 +10,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class ChromosomeThread  implements Runnable{
-    private String chr;
-    private int mapKey;
-    private int speciesTypeKey;
+    private final String chr;
+    private final int mapKey;
+    private final int speciesTypeKey;
     VariantDao variantDao=new VariantDao();
     public ChromosomeThread(String chr, int mapKey, int speciesTypeKey){
         this.chr=chr;

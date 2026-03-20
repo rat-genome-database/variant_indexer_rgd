@@ -1,4 +1,4 @@
-package edu.mcw.rgd.variantIndexerRgd;
+package edu.mcw.rgd.variantIndexerRgd.futureHuman;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

@@ -20,25 +20,6 @@ import java.util.*;
  */
 public class VariantTranscriptDao extends AbstractDAO{
 
-
-    public Map<Integer, String> getTranscriptsResultSet(int geneRgdId, int mapKey) throws Exception {
-        String  sql = "SELECT transcript_rgd_id,is_non_coding_ind FROM transcripts WHERE gene_rgd_id=? "+
-                "AND EXISTS(SELECT 1 FROM maps_data md WHERE md.rgd_id=transcript_rgd_id AND md.map_key=?)";
-        Map<Integer, String> transcriptResult=new HashMap<>();
-        try(Connection conn= this.getDataSource().getConnection();
-                PreparedStatement stmt=conn.prepareStatement(sql)){
-            stmt.setInt(1,geneRgdId);
-            stmt.setInt(2, mapKey);
-            ResultSet rs= stmt.executeQuery();
-            while (rs.next()){
-                transcriptResult.put(rs.getInt("transcript_rgd_id"), rs.getString("is_non_coding_ind"));
-            }
-            rs.close();
-            stmt.close();
-            conn.close();
-        }
-    return transcriptResult;
-    }
     public List<Transcript> getTranscriptsResult(int geneRgdId, int mapKey) throws Exception {
         String  sql = "SELECT * FROM transcripts WHERE gene_rgd_id=? "+
                 " AND EXISTS(SELECT 1 FROM maps_data md WHERE md.rgd_id=transcript_rgd_id AND md.map_key=?)";
@@ -59,18 +40,6 @@ public class VariantTranscriptDao extends AbstractDAO{
                 " AND r.OBJECT_KEY=15"; // "EXONS"
 
         return getCount(sql,new Object[]{transcriptRgdId, mapKey, chr});
-     /*  try(Connection conn=this.getDataSource().getConnection();
-           PreparedStatement psExonCount=conn.prepareStatement(sql)) {
-           psExonCount.setInt(1, transcriptRgdId);
-           psExonCount.setInt(2, mapKey);
-           psExonCount.setString(3, chr);
-           ResultSet rs = psExonCount.executeQuery();
-           rs.next();
-           int exonCount = rs.getInt(1);
-           rs.close();
-           psExonCount.close();
-           conn.close();
-           return exonCount;*/
 
     }
     public  List<TranscriptFeatures> getTranscriptFeaturesResultSet(int transcriptRgdId, String chr, int mapKey) throws Exception {
@@ -637,17 +606,6 @@ public class VariantTranscriptDao extends AbstractDAO{
 
     Map<String,String> dnaCache = new HashMap<>();
 
-    public void initGene(int geneRgdId) {
-        // the idea is to keep in the cache positions for gene exons
-        // the more transcripts a gene has, the bigger benefits of this cache
-        dnaCache.clear();
-    }
 
-  /*  public static void main(String[] args) throws Exception {
-        VariantTranscriptDao dao= new VariantTranscriptDao();
-        dao.getConservationScores("1", 404395 );
-        System.out.println("DONE!!");
-    }
-*/
 
 }

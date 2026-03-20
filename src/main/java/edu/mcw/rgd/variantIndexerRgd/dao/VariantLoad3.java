@@ -12,7 +12,7 @@ import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.util.Zygosity;
 
-import edu.mcw.rgd.variantIndexerRgd.VariantIndexerThread;
+import edu.mcw.rgd.variantIndexerRgd.futureHuman.VariantIndexerThread;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import org.elasticsearch.action.bulk.BackoffPolicy;

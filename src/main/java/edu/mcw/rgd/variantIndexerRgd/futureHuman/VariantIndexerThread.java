@@ -1,6 +1,5 @@
-package edu.mcw.rgd.variantIndexerRgd;
+package edu.mcw.rgd.variantIndexerRgd.futureHuman;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.dao.impl.MapDAO;
 import edu.mcw.rgd.datamodel.Chromosome;
 import edu.mcw.rgd.datamodel.Sample;

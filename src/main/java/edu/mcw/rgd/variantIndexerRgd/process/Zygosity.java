@@ -27,67 +27,8 @@ public class Zygosity {
     public static int HOMOZYGOUS_PERCENT = 100;
     protected final Log logger = LogFactory.getLog(this.getClass());
 
-    public Zygosity() {
-    }
+    public Zygosity() {}
 
-    /** @deprecated */
-    @Deprecated
- /*   public List<Variant> computeVariants(int scoreA, int scoreC, int scoreG, int scoreT, String gender, VariantIndex originalVariant) {
-        float totalDepth = (float)(scoreA + scoreC + scoreG + scoreT);
-        ArrayList returnList = new ArrayList();
-        String origVarNuc = originalVariant.getVarNuc();
-        float scoreAPerc = (float)(scoreA * 100) / totalDepth;
-        float scoreCPerc = (float)(scoreC * 100) / totalDepth;
-        float scoreGPerc = (float)(scoreG * 100) / totalDepth;
-        float scoreTPerc = (float)(scoreT * 100) / totalDepth;
-        String refNucl = originalVariant.getRefNuc();
-        String chr = originalVariant.getChromosome();
-        if(scoreAPerc > 0.0F && !refNucl.equals("A")) {
-            VariantIndex variantA = originalVariant;
-            if(!origVarNuc.equals("A")) {
-               // variantA.setId(0L);
-            }
-
-            variantA.setVarNuc("A");
-            this.computeZygosity(scoreAPerc, scoreAPerc, scoreCPerc, scoreGPerc, scoreTPerc, chr, gender, variantA);
-            returnList.add(variantA);
-        }
-
-        if(scoreCPerc > 0.0F && !refNucl.equals("C")) {
-            VariantIndex variantC = originalVariant;
-            if(!origVarNuc.equals("C")) {
-            //    variantC.setId(0L);
-            }
-
-            variantC.setVarNuc("C");
-            this.computeZygosity(scoreCPerc, scoreAPerc, scoreCPerc, scoreGPerc, scoreTPerc, chr, gender, variantC);
-            returnList.add(variantC);
-        }
-
-        if(scoreGPerc > 0.0F && !refNucl.equals("G")) {
-            VariantIndex variantG = originalVariant;
-            if(!origVarNuc.equals("G")) {
-             //   variantG.setId(0L);
-            }
-
-            variantG.setVarNuc("G");
-            this.computeZygosity(scoreGPerc, scoreAPerc, scoreCPerc, scoreGPerc, scoreTPerc, chr, gender, variantG);
-            returnList.add(variantG);
-        }
-
-        if(scoreTPerc > 0.0F && !refNucl.equals("T")) {
-            VariantIndex variantT = originalVariant;
-            if(!origVarNuc.equals("T")) {
-           //     variantT.setId(0L);
-            }
-
-            variantT.setVarNuc("T");
-            this.computeZygosity(scoreTPerc, scoreAPerc, scoreCPerc, scoreGPerc, scoreTPerc, chr, gender, variantT);
-            returnList.add(variantT);
-        }
-
-        return returnList.size() > 0?returnList:null;
-    }*/
 
     public int computeVariant(int scoreA, int scoreC, int scoreG, int scoreT, String gender, VariantMapData md, VariantSampleDetail sd) {
         float totalDepth = (float)(scoreA + scoreC + scoreG + scoreT);
