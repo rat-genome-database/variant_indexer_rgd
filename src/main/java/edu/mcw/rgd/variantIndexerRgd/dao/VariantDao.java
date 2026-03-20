@@ -5,13 +5,11 @@ import edu.mcw.rgd.dao.DataSourceFactory;
 
 import edu.mcw.rgd.dao.impl.VariantInfoDAO;
 import edu.mcw.rgd.dao.spring.IntListQuery;
-import edu.mcw.rgd.dao.spring.variants.*;
 import edu.mcw.rgd.datamodel.VariantInfo;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.jdbc.core.SqlParameter;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -23,6 +21,7 @@ import java.util.stream.Collectors;
  */
 public class VariantDao extends AbstractDAO {
     private static final Logger log = LogManager.getLogger(VariantDao.class);
+    private static final int ORACLE_IN_LIMIT = 1000;
 
     VariantInfoDAO variantInfoDAO = new VariantInfoDAO();
 
@@ -43,6 +42,24 @@ public class VariantDao extends AbstractDAO {
         }
     }
 
+    /**
+     * Builds an Oracle-safe IN clause for lists that may exceed 1000 items.
+     * E.g. for column "v.rgd_id" and 2500 ids: "(v.rgd_id in (1,2,...,1000) or v.rgd_id in (1001,...,2000) or v.rgd_id in (2001,...,2500))"
+     */
+    static String buildInClause(String column, List<Integer> ids) {
+        if (ids.size() <= ORACLE_IN_LIMIT) {
+            return column + " in (" + ids.stream().map(Object::toString).collect(Collectors.joining(",")) + ")";
+        }
+        StringBuilder sb = new StringBuilder("(");
+        for (int i = 0; i < ids.size(); i += ORACLE_IN_LIMIT) {
+            if (i > 0) sb.append(" or ");
+            List<Integer> chunk = ids.subList(i, Math.min(i + ORACLE_IN_LIMIT, ids.size()));
+            sb.append(column).append(" in (").append(chunk.stream().map(Object::toString).collect(Collectors.joining(","))).append(")");
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
     public List<Integer> getUniqueVariantsIds(String chr, int mapKey, int speciesTypeKey) throws Exception {
         String sql = "select distinct v.rgd_id from variant v, variant_map_data vmd  " +
                 "where v.rgd_id=vmd.rgd_id " +
@@ -59,12 +76,10 @@ public class VariantDao extends AbstractDAO {
      * transcripts × gene_loci × conservation_scores × samples.
      */
     public List<VariantIndex> getVariantsForIndexing(int mapKey, List<Integer> variantIdsList) throws Exception {
-        String ids = variantIdsList.stream().map(Object::toString).collect(Collectors.joining(","));
         DataSource ds = DataSourceFactory.getInstance().getCarpeNovoDataSource();
 
         // Step 1: Get base variant + sample data (no transcript/gene_loci/conscore joins)
-        // Returns exactly one row per variant+sample — no row multiplication
-        Map<String, VariantIndex> variantMap = loadBaseVariants(ds, ids, mapKey);
+        Map<String, VariantIndex> variantMap = loadBaseVariants(ds, variantIdsList, mapKey);
         log.info("Base variants loaded: " + variantMap.size());
 
         // Step 2: Batch-load transcripts grouped by variant_id
@@ -72,7 +87,7 @@ public class VariantDao extends AbstractDAO {
         for (VariantIndex vi : variantMap.values()) {
             variantRgdIds.add(vi.getVariant_id());
         }
-        Map<Long, List<VariantTranscript>> transcriptMap = loadTranscripts(ds, ids, mapKey);
+        Map<Long, List<VariantTranscript>> transcriptMap = loadTranscripts(ds, variantIdsList, mapKey);
         for (VariantIndex vi : variantMap.values()) {
             List<VariantTranscript> vts = transcriptMap.get(vi.getVariant_id());
             if (vts != null) {
@@ -80,17 +95,10 @@ public class VariantDao extends AbstractDAO {
             }
         }
 
-        // Step 3: Batch-load gene_loci and conservation scores by position
-        // These are position-based, so load once per unique position
-        Set<Long> positions = new HashSet<>();
-        Map<Long, String> posChrMap = new HashMap<>();
-        for (VariantIndex vi : variantMap.values()) {
-            positions.add(vi.getStartPos());
-            posChrMap.put(vi.getStartPos(), vi.getChromosome());
-        }
-        Map<Long, List<String>> geneLociMap = loadGeneLoci(ds, ids, mapKey);
+        // Step 3: Batch-load gene_loci and conservation scores
+        Map<Long, List<String>> geneLociMap = loadGeneLoci(ds, variantIdsList, mapKey);
         String csTable = getConScoreTable(mapKey, null);
-        Map<Long, List<String>> conScoreMap = !csTable.isEmpty() ? loadConservationScores(ds, ids, csTable) : Collections.emptyMap();
+        Map<Long, List<String>> conScoreMap = !csTable.isEmpty() ? loadConservationScores(ds, variantIdsList, csTable) : Collections.emptyMap();
 
         for (VariantIndex vi : variantMap.values()) {
             List<String> regionNames = geneLociMap.get(vi.getStartPos());
@@ -116,7 +124,8 @@ public class VariantDao extends AbstractDAO {
         return new ArrayList<>(variantMap.values());
     }
 
-    private Map<String, VariantIndex> loadBaseVariants(DataSource ds, String ids, int mapKey) throws Exception {
+    private Map<String, VariantIndex> loadBaseVariants(DataSource ds, List<Integer> variantIdsList, int mapKey) throws Exception {
+        String inClause = buildInClause("v.rgd_id", variantIdsList);
         String sql = "select v.rgd_id, v.ref_nuc, v.var_nuc, v.variant_type, v.rs_id, v.clinvar_id, v.species_type_key," +
                 " vmd.chromosome, vmd.start_pos, vmd.end_pos, vmd.genic_status, vmd.padding_base, vmd.map_key," +
                 " vsd.sample_id, vsd.total_depth, vsd.var_freq, vsd.zygosity_status," +
@@ -125,7 +134,7 @@ public class VariantDao extends AbstractDAO {
                 " from variant v" +
                 " join variant_map_data vmd on (vmd.rgd_id=v.rgd_id)" +
                 " join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id)" +
-                " where v.rgd_id in (" + ids + ")" +
+                " where " + inClause +
                 " and vsd.sample_id in (select sample_id from sample where map_key=?)" +
                 " and vmd.map_key=?";
 
@@ -169,11 +178,8 @@ public class VariantDao extends AbstractDAO {
         return result;
     }
 
-    /**
-     * Loads transcripts with polyphen predictions for the given variant IDs.
-     * Returns a map of variant_rgd_id -> list of unique transcripts.
-     */
-    private Map<Long, List<VariantTranscript>> loadTranscripts(DataSource ds, String ids, int mapKey) throws Exception {
+    private Map<Long, List<VariantTranscript>> loadTranscripts(DataSource ds, List<Integer> variantIdsList, int mapKey) throws Exception {
+        String inClause = buildInClause("vt.variant_rgd_id", variantIdsList);
         String sql = "select vt.variant_rgd_id, vt.transcript_rgd_id, vt.ref_aa, vt.var_aa," +
                 " vt.syn_status, vt.location_name, vt.near_splice_site," +
                 " vt.full_ref_nuc_pos, vt.full_ref_aa_pos, vt.triplet_error, vt.frameshift," +
@@ -184,11 +190,11 @@ public class VariantDao extends AbstractDAO {
                 " left outer join genes g on (g.rgd_id=t.gene_rgd_id)" +
                 " left outer join maps_data md on (md.rgd_id=g.rgd_id and md.map_key=?)" +
                 " left outer join polyphen p on (vt.variant_rgd_id=p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)" +
-                " where vt.variant_rgd_id in (" + ids + ")" +
+                " where " + inClause +
                 " and vt.map_key=?";
 
         Map<Long, List<VariantTranscript>> result = new HashMap<>();
-        Set<String> seen = new HashSet<>(); // dedup by variant_id + transcript_id
+        Set<String> seen = new HashSet<>();
 
         try (Connection conn = ds.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -216,7 +222,7 @@ public class VariantDao extends AbstractDAO {
                     try {
                         vt.setTranscriptSymbol(rs.getString("transcript_acc_id"));
                         vt.setProteinSymbol(rs.getString("protein_acc_id"));
-                    } catch (Exception e) { /* columns may not exist in all queries */ }
+                    } catch (Exception e) { /* columns may not exist */ }
 
                     result.computeIfAbsent(variantId, k -> new ArrayList<>()).add(vt);
                 }
@@ -225,13 +231,11 @@ public class VariantDao extends AbstractDAO {
         return result;
     }
 
-    /**
-     * Loads gene_loci grouped by position for the given variant IDs.
-     */
-    private Map<Long, List<String>> loadGeneLoci(DataSource ds, String ids, int mapKey) throws Exception {
+    private Map<Long, List<String>> loadGeneLoci(DataSource ds, List<Integer> variantIdsList, int mapKey) throws Exception {
+        String inClause = buildInClause("vmd.rgd_id", variantIdsList);
         String sql = "select distinct gl.pos, gl.gene_symbols" +
                 " from gene_loci gl, variant_map_data vmd" +
-                " where vmd.rgd_id in (" + ids + ")" +
+                " where " + inClause +
                 " and vmd.map_key=?" +
                 " and gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos";
 
@@ -252,14 +256,12 @@ public class VariantDao extends AbstractDAO {
         return result;
     }
 
-    /**
-     * Loads conservation scores grouped by position for the given variant IDs.
-     */
-    private Map<Long, List<String>> loadConservationScores(DataSource ds, String ids, String csTable) throws Exception {
+    private Map<Long, List<String>> loadConservationScores(DataSource ds, List<Integer> variantIdsList, String csTable) throws Exception {
+        String inClause = buildInClause("vmd.rgd_id", variantIdsList);
         String sql = "select distinct vmd.start_pos, cs.score" +
                 " from variant_map_data vmd" +
                 " join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)" +
-                " where vmd.rgd_id in (" + ids + ")";
+                " where " + inClause;
 
         Map<Long, List<String>> result = new HashMap<>();
         try (Connection conn = ds.getConnection();
@@ -277,9 +279,6 @@ public class VariantDao extends AbstractDAO {
         return result;
     }
 
-    /**
-     * Batch-loads clinvar significance for all variant IDs, applied to each VariantIndex.
-     */
     private void loadClinvarBatch(Set<Long> variantRgdIds, Map<String, VariantIndex> variantMap) {
         Map<Long, String> clinvarCache = new HashMap<>();
         for (long vid : variantRgdIds) {
