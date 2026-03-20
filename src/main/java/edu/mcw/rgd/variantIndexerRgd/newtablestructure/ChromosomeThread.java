@@ -36,8 +36,8 @@ public class ChromosomeThread  implements Runnable{
             return;
         }
         log.info("UNIQUE VARIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
-        ExecutorService executor = new MyThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        Collection[] collections = VariantIndexUtils.split(variantIds, 5000);
+        ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        Collection[] collections = VariantIndexUtils.split(variantIds, 1000);
         for (int i = 0; i < collections.length; i++) {
             Runnable variantsNewTableThread=new VariantsNewTableThread(mapKey, (List<Integer>) collections[i]);
             executor.execute(variantsNewTableThread);
