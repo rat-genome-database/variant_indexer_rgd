@@ -56,7 +56,7 @@ public class Manager {
 
     BulkIndexProcessor bulkIndexProcessor;
 
-    static Logger log=getLogger(Manager.class);
+    static Logger log=getLogger("main");
 
     public static void main(String[] args) throws Exception {
 
@@ -180,6 +180,7 @@ public class Manager {
         String oldAlias = rgdIndex.getOldAlias();
         String indexName = rgdIndex.getIndex();
         log.info("Switched Alias!!\nNEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
+        System.out.println("Switched Alias!!\nNEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
         IndicesAliasesRequest request = new IndicesAliasesRequest();
 
         if (oldAlias != null) {

@@ -4,24 +4,16 @@ import edu.mcw.rgd.dao.AbstractDAO;
 import edu.mcw.rgd.dao.DataSourceFactory;
 
 import edu.mcw.rgd.dao.impl.VariantInfoDAO;
-import edu.mcw.rgd.dao.spring.ConservationScoreMapper;
 import edu.mcw.rgd.dao.spring.IntListQuery;
 import edu.mcw.rgd.dao.spring.variants.*;
-import edu.mcw.rgd.datamodel.ConservationScore;
 import edu.mcw.rgd.datamodel.VariantInfo;
-import edu.mcw.rgd.datamodel.variants.VariantMapData;
-import edu.mcw.rgd.datamodel.variants.VariantObject;
-import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
-import edu.mcw.rgd.process.Utils;
-import edu.mcw.rgd.variantIndexerRgd.model.BasicTranscriptData;
-import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import edu.mcw.rgd.variantIndexerRgd.model.VariantIndexObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.jdbc.core.SqlParameter;
 
-
-import java.math.BigDecimal;
+import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,18 +22,17 @@ import java.util.stream.Collectors;
  * Created by jthota on 1/16/2020.
  */
 public class VariantDao extends AbstractDAO {
-    VariantInfoDAO variantInfoDAO=new VariantInfoDAO();
-    public String getConScoreTable(int mapKey, String genicStatus ) {
-        switch(mapKey) {
+    private static final Logger log = LogManager.getLogger(VariantDao.class);
+
+    VariantInfoDAO variantInfoDAO = new VariantInfoDAO();
+
+    public String getConScoreTable(int mapKey, String genicStatus) {
+        switch (mapKey) {
             case 17:
                 return " B37_CONSCORE_PART_IOT ";
             case 38:
                 return " CONSERVATION_SCORE_HG38 ";
             case 60:
-            /*    if (genicStatus.equalsIgnoreCase("GENIC")) {
-                    return " CONSERVATION_SCORE_GENIC ";
-                }
-*/
                 return " CONSERVATION_SCORE ";
             case 70:
                 return " CONSERVATION_SCORE_5 ";
@@ -52,157 +43,264 @@ public class VariantDao extends AbstractDAO {
         }
     }
 
-    public List<Integer> getUniqueVariantsIds( String chr, int mapKey, int speciesTypeKey) throws Exception {
-        String sql ="select distinct v.rgd_id from variant v, variant_map_data vmd  " +
+    public List<Integer> getUniqueVariantsIds(String chr, int mapKey, int speciesTypeKey) throws Exception {
+        String sql = "select distinct v.rgd_id from variant v, variant_map_data vmd  " +
                 "where v.rgd_id=vmd.rgd_id " +
                 " and v.species_type_key=? " +
                 " and vmd.chromosome=? " +
                 " and vmd.map_key=?";
-        //  VariantMapQuery q=new VariantMapQuery(DataSourceFactory.getInstance().getDataSource("Variant"), sql);
-        IntListQuery q=new IntListQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
-        return execute(q,speciesTypeKey,chr,mapKey);
+        IntListQuery q = new IntListQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
+        return execute(q, speciesTypeKey, chr, mapKey);
     }
-    public List<VariantIndex> getVariantsNewTbaleStructure(  int mapKey, List<Integer> variantIdsList) throws Exception {
 
-        String csTable=getConScoreTable(mapKey,null);
-        String sql="select v.*,vmd.*, vsd.*,vt.*,t.acc_id as transcript_acc_id,t.protein_acc_id as protein_acc_id, p.prediction ,gl.gene_symbols as region_name, g.rgd_id as gene_rgd_id," +
-                " g.gene_symbol_lc as gene_symbol_lc, md.strand as strand " ;
+    /**
+     * Loads variant index data using separate focused queries instead of one massive JOIN.
+     * This avoids the Cartesian product explosion that multiplies rows across
+     * transcripts × gene_loci × conservation_scores × samples.
+     */
+    public List<VariantIndex> getVariantsForIndexing(int mapKey, List<Integer> variantIdsList) throws Exception {
+        String ids = variantIdsList.stream().map(Object::toString).collect(Collectors.joining(","));
+        DataSource ds = DataSourceFactory.getInstance().getCarpeNovoDataSource();
 
-        if(!csTable.equals("")){
-            sql+=" , cs.score ";
+        // Step 1: Get base variant + sample data (no transcript/gene_loci/conscore joins)
+        // Returns exactly one row per variant+sample — no row multiplication
+        Map<String, VariantIndex> variantMap = loadBaseVariants(ds, ids, mapKey);
+        log.info("Base variants loaded: " + variantMap.size());
+
+        // Step 2: Batch-load transcripts grouped by variant_id
+        Set<Long> variantRgdIds = new HashSet<>();
+        for (VariantIndex vi : variantMap.values()) {
+            variantRgdIds.add(vi.getVariant_id());
         }
-        sql+=   " from variant v " +
-                " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
-                " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " +
-                " left outer join variant_transcript vt on ( v.rgd_id=vt.variant_rgd_id )  " +
-                " left outer join transcripts t on (t.transcript_rgd_id=vt.transcript_rgd_id) " +
-                " left outer join genes g on (g.rgd_id=t.gene_rgd_id) " +
-                " left outer join maps_data md on ( md.rgd_id=g.rgd_id and md.map_key=vmd.map_key) " +
-                " left outer join polyphen  p on (vt.variant_rgd_id =p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)   " ;
-        if(!csTable.equals("")) {
-            sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)     ";
+        Map<Long, List<VariantTranscript>> transcriptMap = loadTranscripts(ds, ids, mapKey);
+        for (VariantIndex vi : variantMap.values()) {
+            List<VariantTranscript> vts = transcriptMap.get(vi.getVariant_id());
+            if (vts != null) {
+                vi.setVariantTranscripts(vts);
+            }
         }
-        sql+=   " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos)         " +
-                " where  " +
-                " v.rgd_id in (" ;
-        //   "63409322)";
-        String ids=  variantIdsList.stream().map(Object::toString).collect(Collectors.joining(","));
-        sql=sql+ids;
-        sql=sql+") ";
 
-        sql=sql+ " and vsd.sample_id in (select sample_id from sample where map_key=?) "+
-                " and vt.map_key=? " +
+        // Step 3: Batch-load gene_loci and conservation scores by position
+        // These are position-based, so load once per unique position
+        Set<Long> positions = new HashSet<>();
+        Map<Long, String> posChrMap = new HashMap<>();
+        for (VariantIndex vi : variantMap.values()) {
+            positions.add(vi.getStartPos());
+            posChrMap.put(vi.getStartPos(), vi.getChromosome());
+        }
+        Map<Long, List<String>> geneLociMap = loadGeneLoci(ds, ids, mapKey);
+        String csTable = getConScoreTable(mapKey, null);
+        Map<Long, List<String>> conScoreMap = !csTable.isEmpty() ? loadConservationScores(ds, ids, csTable) : Collections.emptyMap();
+
+        for (VariantIndex vi : variantMap.values()) {
+            List<String> regionNames = geneLociMap.get(vi.getStartPos());
+            if (regionNames != null && !regionNames.isEmpty()) {
+                vi.setRegionName(regionNames);
+                List<String> lc = new ArrayList<>();
+                for (String name : regionNames) {
+                    lc.add(name.toLowerCase());
+                }
+                vi.setRegionNameLc(lc);
+            }
+            List<String> scores = conScoreMap.get(vi.getStartPos());
+            if (scores != null && !scores.isEmpty()) {
+                vi.setConScores(scores);
+            }
+        }
+
+        // Step 4: Batch-load clinvar info for human assemblies
+        if (mapKey == 38 || mapKey == 17) {
+            loadClinvarBatch(variantRgdIds, variantMap);
+        }
+
+        return new ArrayList<>(variantMap.values());
+    }
+
+    private Map<String, VariantIndex> loadBaseVariants(DataSource ds, String ids, int mapKey) throws Exception {
+        String sql = "select v.rgd_id, v.ref_nuc, v.var_nuc, v.variant_type, v.rs_id, v.clinvar_id, v.species_type_key," +
+                " vmd.chromosome, vmd.start_pos, vmd.end_pos, vmd.genic_status, vmd.padding_base, vmd.map_key," +
+                " vsd.sample_id, vsd.total_depth, vsd.var_freq, vsd.zygosity_status," +
+                " vsd.zygosity_percent_read, vsd.zygosity_poss_error, vsd.zygosity_ref_allele," +
+                " vsd.zygosity_num_allele, vsd.zygosity_in_pseudo, vsd.quality_score" +
+                " from variant v" +
+                " join variant_map_data vmd on (vmd.rgd_id=v.rgd_id)" +
+                " join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id)" +
+                " where v.rgd_id in (" + ids + ")" +
+                " and vsd.sample_id in (select sample_id from sample where map_key=?)" +
                 " and vmd.map_key=?";
 
-        VariantIndexQuery query=new VariantIndexQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
-        List<VariantIndex> variants=  execute(query, mapKey, mapKey,mapKey);
+        Map<String, VariantIndex> result = new LinkedHashMap<>();
+        try (Connection conn = ds.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, mapKey);
+            stmt.setInt(2, mapKey);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    VariantIndex vi = new VariantIndex();
+                    vi.setCategory("Variant");
+                    vi.setVariant_id(rs.getLong("rgd_id"));
+                    vi.setRefNuc(rs.getString("ref_nuc"));
+                    vi.setVarNuc(rs.getString("var_nuc"));
+                    vi.setVariantType(rs.getString("variant_type"));
+                    vi.setRsId(rs.getString("rs_id"));
+                    vi.setClinvarId(rs.getString("clinvar_id"));
+                    vi.setChromosome(rs.getString("chromosome"));
+                    vi.setStartPos(rs.getLong("start_pos"));
+                    vi.setEndPos(rs.getLong("end_pos"));
+                    vi.setGenicStatus(rs.getString("genic_status"));
+                    vi.setPaddingBase(rs.getString("padding_base"));
+                    vi.setMapKey(rs.getInt("map_key"));
+                    vi.setSampleId(rs.getInt("sample_id"));
+                    vi.setTotalDepth(rs.getInt("total_depth"));
+                    vi.setVarFreq(rs.getInt("var_freq"));
+                    vi.setZygosityStatus(rs.getString("zygosity_status"));
+                    vi.setZygosityPercentRead(rs.getDouble("zygosity_percent_read"));
+                    vi.setZygosityPossError(rs.getString("zygosity_poss_error"));
+                    vi.setZygosityRefAllele(rs.getString("zygosity_ref_allele"));
+                    vi.setZygosityNumAllele(rs.getInt("zygosity_num_allele"));
+                    vi.setZygosityInPseudo(rs.getString("zygosity_in_pseudo"));
+                    vi.setQualityScore(rs.getInt("quality_score"));
 
-        // Batch-load clinvar info once for human assemblies instead of N+1 per-row queries
-        Map<Long, String> clinvarCache = new HashMap<>();
-        if(mapKey==38 || mapKey==17){
-            for(VariantIndex variant:variants){
-                long vid = variant.getVariant_id();
-                if(!clinvarCache.containsKey(vid)){
+                    String key = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+                    result.putIfAbsent(key, vi);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Loads transcripts with polyphen predictions for the given variant IDs.
+     * Returns a map of variant_rgd_id -> list of unique transcripts.
+     */
+    private Map<Long, List<VariantTranscript>> loadTranscripts(DataSource ds, String ids, int mapKey) throws Exception {
+        String sql = "select vt.variant_rgd_id, vt.transcript_rgd_id, vt.ref_aa, vt.var_aa," +
+                " vt.syn_status, vt.location_name, vt.near_splice_site," +
+                " vt.full_ref_nuc_pos, vt.full_ref_aa_pos, vt.triplet_error, vt.frameshift," +
+                " t.acc_id as transcript_acc_id, t.protein_acc_id," +
+                " p.prediction, g.rgd_id as gene_rgd_id, g.gene_symbol_lc, md.strand" +
+                " from variant_transcript vt" +
+                " left outer join transcripts t on (t.transcript_rgd_id=vt.transcript_rgd_id)" +
+                " left outer join genes g on (g.rgd_id=t.gene_rgd_id)" +
+                " left outer join maps_data md on (md.rgd_id=g.rgd_id and md.map_key=?)" +
+                " left outer join polyphen p on (vt.variant_rgd_id=p.variant_rgd_id and vt.transcript_rgd_id=p.transcript_rgd_id)" +
+                " where vt.variant_rgd_id in (" + ids + ")" +
+                " and vt.map_key=?";
+
+        Map<Long, List<VariantTranscript>> result = new HashMap<>();
+        Set<String> seen = new HashSet<>(); // dedup by variant_id + transcript_id
+
+        try (Connection conn = ds.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, mapKey);
+            stmt.setInt(2, mapKey);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long variantId = rs.getLong("variant_rgd_id");
+                    int transcriptId = rs.getInt("transcript_rgd_id");
+                    String dedupKey = variantId + "-" + transcriptId;
+                    if (!seen.add(dedupKey)) continue;
+
+                    VariantTranscript vt = new VariantTranscript();
+                    vt.setTranscriptRgdId(transcriptId);
+                    vt.setRefAA(rs.getString("ref_aa"));
+                    vt.setVarAA(rs.getString("var_aa"));
+                    vt.setSynStatus(rs.getString("syn_status"));
+                    vt.setLocationName(rs.getString("location_name"));
+                    vt.setNearSpliceSite(rs.getString("near_splice_site"));
+                    vt.setFullRefNucPos(rs.getInt("full_ref_nuc_pos"));
+                    vt.setFullRefAAPos(rs.getInt("full_ref_aa_pos"));
+                    vt.setTripletError(rs.getString("triplet_error"));
+                    vt.setFrameShift(rs.getString("frameshift"));
+                    vt.setPolyphenStatus(rs.getString("prediction"));
                     try {
-                        String sig = getClinvarInfo((int) vid);
-                        clinvarCache.put(vid, sig != null && !sig.isEmpty() ? sig : null);
-                    }catch (Exception e){
-                        clinvarCache.put(vid, null);
-                    }
+                        vt.setTranscriptSymbol(rs.getString("transcript_acc_id"));
+                        vt.setProteinSymbol(rs.getString("protein_acc_id"));
+                    } catch (Exception e) { /* columns may not exist in all queries */ }
+
+                    result.computeIfAbsent(variantId, k -> new ArrayList<>()).add(vt);
                 }
             }
         }
-
-        java.util.Map<String, VariantIndex> sortedVariants=new LinkedHashMap<>();
-        Set<Long> variantIdsWithTranscripts=new HashSet<>();
-        for(VariantIndex variant:variants){
-            variantIdsWithTranscripts.add(variant.getVariant_id());
-            String key=variant.getVariant_id()+"-"+variant.getSampleId()+"-"+variant.getMapKey();
-
-            String clinvarSig = clinvarCache.get(variant.getVariant_id());
-            if(clinvarSig != null){
-                variant.setClinicalSignificance(clinvarSig);
-            }
-
-            if(!sortedVariants.containsKey(key)){
-                sortedVariants.put(key,variant);
-            }else{
-                VariantIndex obj = sortedVariants.get(key);
-                if(variant.getVariantTranscripts()!=null && obj != null) {
-                    List<VariantTranscript> vtranscripts = obj.getVariantTranscripts();
-                    for (VariantTranscript transcript : variant.getVariantTranscripts()) {
-                        boolean exists = false;
-                        for (VariantTranscript variantTranscript : vtranscripts) {
-                            if (transcript.getTranscriptRgdId() == variantTranscript.getTranscriptRgdId()) {
-                                exists = true;
-                                break;
-                            }
-                        }
-                        if (!exists) {
-                            vtranscripts.add(transcript);
-                        }
-                    }
-                    obj.setVariantTranscripts(vtranscripts);
-                }
-            }
-        }
-
-        List<VariantIndex> vrList=new ArrayList<>(sortedVariants.values());
-        Set<Long> variantIdsWithoutTranscripts=new HashSet<>();
-        Set<Long> distinctInputIds = new HashSet<>();
-        for(int id : variantIdsList) {
-            distinctInputIds.add((long) id);
-        }
-        for(long id : distinctInputIds){
-            if(!variantIdsWithTranscripts.contains(id)){
-                variantIdsWithoutTranscripts.add(id);
-            }
-        }
-        if(!variantIdsWithoutTranscripts.isEmpty()){
-            List<VariantIndex> variantsWithoutTranscripts = getVariantsWithoutTranscripts(mapKey, variantIdsWithoutTranscripts);
-            // Deduplicate: gene_loci and conservation_score joins can produce multiple rows per variant+sample
-            Map<String, VariantIndex> dedupMap = new LinkedHashMap<>();
-            for (VariantIndex vi : variantsWithoutTranscripts) {
-                String key = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
-                dedupMap.putIfAbsent(key, vi);
-            }
-            vrList.addAll(dedupMap.values());
-        }
-        return vrList;
+        return result;
     }
 
-    public List<VariantIndex> getVariantsWithoutTranscripts(int mapKey,Set<Long> variantIdsWithoutTranscripts) throws Exception {
-        String csTable=getConScoreTable(mapKey,null);
-        String sql="select v.*,vmd.*, vsd.* ,gl.gene_symbols as region_name " ;
-        if(!csTable.equals("")){
-            sql+=" , cs.score ";
+    /**
+     * Loads gene_loci grouped by position for the given variant IDs.
+     */
+    private Map<Long, List<String>> loadGeneLoci(DataSource ds, String ids, int mapKey) throws Exception {
+        String sql = "select distinct gl.pos, gl.gene_symbols" +
+                " from gene_loci gl, variant_map_data vmd" +
+                " where vmd.rgd_id in (" + ids + ")" +
+                " and vmd.map_key=?" +
+                " and gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos";
+
+        Map<Long, List<String>> result = new HashMap<>();
+        try (Connection conn = ds.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, mapKey);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long pos = rs.getLong("pos");
+                    String symbol = rs.getString("gene_symbols");
+                    if (symbol != null) {
+                        result.computeIfAbsent(pos, k -> new ArrayList<>()).add(symbol);
+                    }
+                }
+            }
         }
-        sql+=   " from variant v " +
-                " left outer join variant_map_data vmd on (vmd.rgd_id=v.rgd_id) " +
-                " left outer join variant_sample_detail vsd on (vsd.rgd_id=v.rgd_id) " ;
+        return result;
+    }
 
-        if(!csTable.equals("")) {
-            sql+=  " left outer join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome) ";
+    /**
+     * Loads conservation scores grouped by position for the given variant IDs.
+     */
+    private Map<Long, List<String>> loadConservationScores(DataSource ds, String ids, String csTable) throws Exception {
+        String sql = "select distinct vmd.start_pos, cs.score" +
+                " from variant_map_data vmd" +
+                " join" + csTable + "cs on (cs.position=vmd.start_pos and cs.chr=vmd.chromosome)" +
+                " where vmd.rgd_id in (" + ids + ")";
+
+        Map<Long, List<String>> result = new HashMap<>();
+        try (Connection conn = ds.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long pos = rs.getLong("start_pos");
+                    String score = rs.getString("score");
+                    if (score != null) {
+                        result.computeIfAbsent(pos, k -> new ArrayList<>()).add(score);
+                    }
+                }
+            }
         }
-        sql+=   " left outer join gene_loci gl on (gl.map_key=vmd.map_key and gl.chromosome=vmd.chromosome and gl.pos=vmd.start_pos) " +
-                " where  " +
-                " v.rgd_id in (" ;
-        //   "63409322)";
-        String ids=  variantIdsWithoutTranscripts.stream().map(Object::toString).collect(Collectors.joining(","));
-        sql=sql+ids;
-        sql=sql+") ";
-        sql=sql+ " and vsd.sample_id in (select sample_id from sample where map_key=?) "+
-                " and vmd.map_key=?";
-     //   System.out.println("SQL:"+sql);
-        VariantIndexQuery query=new VariantIndexQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
+        return result;
+    }
 
-        return execute(query,mapKey,mapKey);
-     //   return null;
-
+    /**
+     * Batch-loads clinvar significance for all variant IDs, applied to each VariantIndex.
+     */
+    private void loadClinvarBatch(Set<Long> variantRgdIds, Map<String, VariantIndex> variantMap) {
+        Map<Long, String> clinvarCache = new HashMap<>();
+        for (long vid : variantRgdIds) {
+            try {
+                VariantInfo info = variantInfoDAO.getVariant((int) vid);
+                String sig = info.getClinicalSignificance();
+                clinvarCache.put(vid, sig != null && !sig.isEmpty() ? sig : null);
+            } catch (Exception e) {
+                clinvarCache.put(vid, null);
+            }
+        }
+        for (VariantIndex vi : variantMap.values()) {
+            String sig = clinvarCache.get(vi.getVariant_id());
+            if (sig != null) {
+                vi.setClinicalSignificance(sig);
+            }
+        }
     }
 
     public String getClinvarInfo(int variantRgdId) throws Exception {
-        VariantInfo info=variantInfoDAO.getVariant(variantRgdId)  ;
-        return  info.getClinicalSignificance();
+        VariantInfo info = variantInfoDAO.getVariant(variantRgdId);
+        return info.getClinicalSignificance();
     }
 }

@@ -19,7 +19,7 @@ public class VariantsNewTableThread implements Runnable{
     public void run() {
         List<VariantIndex> indexList = new ArrayList<>();
         try {
-            indexList = variantDao.getVariantsNewTbaleStructure(mapKey, variantIds);
+            indexList = variantDao.getVariantsForIndexing(mapKey, variantIds);
         } catch (Exception e) {
             e.printStackTrace();
         }
