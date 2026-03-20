@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="stdout" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%d] - %m%n"/>
+        </Console>
+        <RollingFile name="logfile"
+                     fileName="logs/root.log"
+                     filePattern="logs/root-%i.log"
+                     append="true">
+            <PatternLayout pattern="%d %p [%c] - %m%n"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10000KB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="7"/>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="logfile"/>
+        </Root>
+    </Loggers>
+</Configuration>
