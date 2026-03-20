@@ -9,7 +9,7 @@ import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 
 import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.services.ClientInit;
-import edu.mcw.rgd.services.IndexAdmin;
+import edu.mcw.rgd.variantIndexerRgd.service.IndexAdmin;
 
 import edu.mcw.rgd.variantIndexerRgd.newtablestructure.*;
 
