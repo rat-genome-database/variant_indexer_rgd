@@ -49,12 +49,10 @@ public class Manager {
     private int speciesTypeKey;
     private String fromChr;
     private String toChr;
-    private String fileName;
     private String command;     //update or reindex
     private String process;     // transcripts or variants
     private String env;     // dev or test or prod
     List<String> chromosomes;
-
 
     BulkIndexProcessor bulkIndexProcessor;
 
@@ -109,18 +107,13 @@ public class Manager {
 
             manager.run(args);
 
-
         }catch (Exception e){
-        manager.bulkIndexProcessor.destroy();
-
           ClientInit.destroy();
             e.printStackTrace();
+        } finally {
+            manager.bulkIndexProcessor.destroy();
+            ClientInit.destroy();
         }
-
-        manager.bulkIndexProcessor.destroy();
-
-        ClientInit.destroy();
-
     }
 
     public void run(String[] args) throws Exception {
@@ -138,10 +131,8 @@ public class Manager {
             case 6:
             case 9:
             case 13:
-                System.out.println("Processing "+species+" variants...");
-                this.setMapKey(mapKey);
-
-                System.out.println("CHROMOSOMES SIZE: "+ chromosomes.size());
+                log.info("Processing "+species+" variants...");
+               log.info("CHROMOSOMES SIZE: "+ chromosomes.size());
 
                        MyThreadPoolExecutor executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        for (String chr : chromosomes) {
@@ -175,47 +166,35 @@ public class Manager {
     }
 
     public String getClusterHealth(String index) throws Exception {
-
         ClusterHealthRequest request = new ClusterHealthRequest(index);
         ClusterHealthResponse response = ClientInit.getClient().cluster().health(request, RequestOptions.DEFAULT);
-        System.out.println(response.getStatus().name());
+        log.info(response.getStatus().name());
         if (response.isTimedOut()) {
             return   "cluster state is " + response.getStatus().name();
         }
-
         return "OK";
     }
+
     public void switchAlias() throws Exception {
         String newAlias = rgdIndex.getNewAlias();
         String oldAlias = rgdIndex.getOldAlias();
         String indexName = rgdIndex.getIndex();
-        System.out.println("NEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
+        log.info("Switched Alias!!\nNEW ALIAS: " + newAlias + " || OLD ALIAS:" + oldAlias);
         IndicesAliasesRequest request = new IndicesAliasesRequest();
 
         if (oldAlias != null) {
-            IndicesAliasesRequest.AliasActions removeAliasAction =
+            request.addAliasAction(
                     new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.REMOVE)
                             .index(oldAlias)
-                            .alias(indexName);
-            IndicesAliasesRequest.AliasActions addAliasAction =
-                    new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
-                            .index(newAlias)
-                            .alias(indexName);
-            request.addAliasAction(removeAliasAction);
-            request.addAliasAction(addAliasAction);
-        }else{
-            IndicesAliasesRequest.AliasActions addAliasAction =
-                    new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
-                            .index(newAlias)
-                            .alias(indexName);
-            request.addAliasAction(addAliasAction);
+                            .alias(indexName));
         }
-        AcknowledgedResponse indicesAliasesResponse =
-                ClientInit.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
+        request.addAliasAction(
+                new IndicesAliasesRequest.AliasActions(IndicesAliasesRequest.AliasActions.Type.ADD)
+                        .index(newAlias)
+                        .alias(indexName));
 
-
+        ClientInit.getClient().indices().updateAliases(request, RequestOptions.DEFAULT);
     }
-
 
     public void setVersion(String version) {
         this.version = version;
@@ -257,14 +236,6 @@ public class Manager {
         this.speciesTypeKey = speciesTypeKey;
     }
 
-    public String getFileName() {
-        return fileName;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
     public String getCommand() {
         return command;
     }
@@ -296,7 +267,6 @@ public class Manager {
     public static void setLog(Logger log) {
         Manager.log = log;
     }
-
 
     public void setRgdIndex(RgdIndex rgdIndex) {
     }

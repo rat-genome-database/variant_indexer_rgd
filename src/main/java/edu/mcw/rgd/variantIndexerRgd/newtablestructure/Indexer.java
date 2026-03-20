@@ -13,12 +13,12 @@ import java.util.*;
 import java.util.Map.Entry;
 
 public class Indexer implements Runnable{
-    private List<VariantData> vrs;
-    private java.util.Map<Long, List<String>> geneLoci;
-    private int mapKey;
-    String chromosome;
-    public Indexer(){}
-    public Indexer(List<VariantData> vrs,  java.util.Map<Long, List<String>> geneLoci, int mapKey,String chromosome){
+    private final List<VariantData> vrs;
+    private final java.util.Map<Long, List<String>> geneLoci;
+    private final int mapKey;
+    private final String chromosome;
+
+    public Indexer(List<VariantData> vrs, java.util.Map<Long, List<String>> geneLoci, int mapKey, String chromosome){
         this.vrs=vrs;
         this.geneLoci=geneLoci;
         this.mapKey=mapKey;
@@ -28,40 +28,40 @@ public class Indexer implements Runnable{
     public void run() {
         java.util.Map<Integer, VariantIndex> processedMap=new HashMap<>();
         for(VariantData vd: vrs){
-            VariantIndex v =null;
             if(processedMap.get(vd.getVariantRgdId())==null){
-                v=mapVariant(vd);
+                VariantIndex v=mapVariant(vd);
                 processedMap.put(vd.getVariantRgdId(), v);
             }else{
-                v =processedMap.get(vd.getVariantRgdId());
+                VariantIndex v =processedMap.get(vd.getVariantRgdId());
                 List<VariantTranscript> transcripts = new ArrayList<>(v.getVariantTranscripts());
-                if(!transcriptExists( vd.getTranscriptRgdId(),v.getVariantTranscripts())){
+                if(!transcriptExists(vd.getTranscriptRgdId(), v.getVariantTranscripts())){
                   VariantTranscript t=mapTranscriptObject(vd);
                   transcripts.add(t);
                     v.setVariantTranscripts(transcripts);
-                    processedMap.put(vd.getVariantRgdId(), v);
                 }
             }
         }
         System.out.println("VARIANTS PROCESSED:"+ processedMap.size());
         index(processedMap);
         System.out.println(Thread.currentThread().getName()+ "\tMapKey:"+mapKey + "\tchromosome:"+chromosome+  "\tEND ....");
-
     }
-    void index(java.util.Map<Integer, VariantIndex>  processedMap){
+
+    void index(java.util.Map<Integer, VariantIndex> processedMap){
         ObjectMapper mapper = new ObjectMapper();
-        for(Entry entry:processedMap.entrySet()){
-            VariantIndex object= (VariantIndex) entry.getValue();
+        String alias = RgdIndex.getInstance().getNewAlias();
+        for(Entry<Integer, VariantIndex> entry : processedMap.entrySet()){
+            VariantIndex object = entry.getValue();
             try {
-                byte[] json =  mapper.writeValueAsBytes(object);
-                String docId = object.getVariant_id() + "-" + object.getSampleId() + "-" + object.getMapKey();
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getInstance().getNewAlias()).id(docId).source(json, XContentType.JSON));
+                byte[] json = mapper.writeValueAsBytes(object);
+                BulkIndexProcessor.bulkProcessor.add(
+                        new IndexRequest(alias).id(VariantIndexUtils.docId(object)).source(json, XContentType.JSON));
             } catch (JsonProcessingException e) {
                 e.printStackTrace();
             }
         }
     }
-     VariantIndex mapVariant(VariantData vd){
+
+    VariantIndex mapVariant(VariantData vd){
         VariantIndex v=new VariantIndex();
         v.setVariant_id(vd.getVariantRgdId());
         v.setRefNuc(vd.getRefNuc());
@@ -86,18 +86,23 @@ public class Indexer implements Runnable{
         v.setAnalysisName(vd.getLocationName());
         v.setRsId(vd.getRsId());
         v.setClinvarId(vd.getClinvarId());
-        List<String> conScores= new ArrayList<>();
-        conScores.add(String.valueOf(vd.getConservationScore()));
-        if(!conScores.isEmpty())
-        v.setConScores(conScores);
-        v.setRegionName(getRegionNames(vd.getStartPos()));
-        v.setRegionNameLc(getRegionNamesLC(vd.getStartPos()));
+        v.setConScores(Collections.singletonList(String.valueOf(vd.getConservationScore())));
+
+        List<String> regionNames = geneLoci.get(vd.getStartPos());
+        v.setRegionName(regionNames);
+        if(regionNames!=null && !regionNames.isEmpty()) {
+            List<String> regionNameLC = new ArrayList<>();
+            for (String name : regionNames) {
+                regionNameLC.add(name.toLowerCase());
+            }
+            v.setRegionNameLc(regionNameLC);
+        }
+
         VariantTranscript vt=mapTranscriptObject(vd);
-        List<VariantTranscript> vts=new ArrayList<>(Arrays.asList(vt));
-        if(!vts.isEmpty())
-         v.setVariantTranscripts(vts);
+        v.setVariantTranscripts(new ArrayList<>(Collections.singletonList(vt)));
        return v;
     }
+
     VariantTranscript mapTranscriptObject(VariantData vd){
         VariantTranscript t=new VariantTranscript();
         t.setPolyphenStatus(vd.getPolyphenPrediction());
@@ -113,9 +118,9 @@ public class Indexer implements Runnable{
         t.setNearSpliceSite(vd.getNearSpliceSite());
         t.setVarAA(vd.getVarAA());
         t.setRefAA(vd.getRefAA());
-
         return t;
     }
+
     boolean transcriptExists(int transcriptRgdId, List<VariantTranscript> vts){
         for(VariantTranscript t:vts){
             if(transcriptRgdId==t.getTranscriptRgdId()){
@@ -124,18 +129,4 @@ public class Indexer implements Runnable{
         }
         return false;
     }
-   List<String> getRegionNames(long startPos){
-       return geneLoci.get(startPos);
-    }
-     List<String> getRegionNamesLC(long startPos){
-        List<String> regionNames=geneLoci.get(startPos);
-        List<String> regionNameLC = new ArrayList<>();
-        if(regionNames!=null && !regionNames.isEmpty()) {
-            for (String name : regionNames) {
-                regionNameLC.add(name.toLowerCase());
-            }
-        }
-        return regionNameLC;
-    }
-
 }

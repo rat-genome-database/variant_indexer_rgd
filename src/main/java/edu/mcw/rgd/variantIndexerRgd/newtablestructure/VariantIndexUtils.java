@@ -4,11 +4,17 @@ import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.datamodel.GeneLoci;
 
 
+import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
+
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class VariantIndexUtils {
+
+    public static String docId(VariantIndex vi) {
+        return vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+    }
 
 
     public static Map<Long, List<String>> getGeneLociMap(int mapKey, String chromosome) throws Exception {

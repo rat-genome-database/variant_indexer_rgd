@@ -1,6 +1,8 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
 import edu.mcw.rgd.services.ClientInit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -14,6 +16,8 @@ import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 public class BulkIndexProcessor {
+    private static final Logger log = LogManager.getLogger(BulkIndexProcessor.class);
+
     public static BulkProcessor bulkProcessor=null;
     private static BulkIndexProcessor bulkIndexProcessor=null;
     private BulkIndexProcessor(){}
@@ -31,19 +35,17 @@ public class BulkIndexProcessor {
             BulkProcessor.Listener listener = new BulkProcessor.Listener() {
                 @Override
                 public void beforeBulk(long executionId, BulkRequest request) {
-                    //        System.out.println("ACTIONS: "+request.numberOfActions());
                 }
 
                 @Override
                 public void afterBulk(long executionId, BulkRequest request,
                                       BulkResponse response) {
-                    //     System.out.println("in process...");
                 }
 
                 @Override
                 public void afterBulk(long executionId, BulkRequest request,
                                       Throwable failure) {
-
+                    log.error("Bulk request failed: " + request.numberOfActions() + " actions lost", failure);
                 }
             };
            return BulkProcessor.builder(
@@ -68,22 +70,18 @@ public class BulkIndexProcessor {
     }
     public  void destroy(){
         try {
-            if(this.bulkProcessor!=null) {
+            if(bulkProcessor!=null) {
                 bulkProcessor.flush();
                 bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-                bulkProcessor=null;
-                bulkIndexProcessor=null;
-
             }
         } catch (InterruptedException e) {
             e.printStackTrace();
         }finally {
             if(bulkProcessor!=null) {
-                bulkProcessor.flush();
                 bulkProcessor.close();
-                bulkProcessor=null;
-                bulkIndexProcessor=null;
             }
+            bulkProcessor=null;
+            bulkIndexProcessor=null;
         }
     }
 }

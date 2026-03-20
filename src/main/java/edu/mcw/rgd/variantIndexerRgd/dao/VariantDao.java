@@ -96,75 +96,78 @@ public class VariantDao extends AbstractDAO {
 
         VariantIndexQuery query=new VariantIndexQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
         List<VariantIndex> variants=  execute(query, mapKey, mapKey,mapKey);
-        List<VariantIndex> vrList=new ArrayList<>();
-        Set<String> variantIds=new HashSet<>();
-        java.util.Map<String, VariantIndex>  sortedVariants=new HashMap<>();
-        Set<Long> variantIdsWithTrancripts=new HashSet<>();
-        for(VariantIndex variant:variants){
-            variantIdsWithTrancripts.add(variant.getVariant_id());
-            String key=variant.getVariant_id()+"-"+variant.getSampleId()+"-"+variant.getMapKey();
-            if(mapKey==38 || mapKey==17){
-                try {
-                    String clinvarSignificance = getClinvarInfo((int) variant.getVariant_id());
-                    if (clinvarSignificance != null && !clinvarSignificance.equals(""))
-                        variant.setClinicalSignificance(clinvarSignificance);
-                }catch (Exception e){
-                    System.out.println("NO CLINICAL SIGNIFICACE SAMPLE_ID:"+ variant.getSampleId() +" RGD_ID:"+variant.getVariant_id());
+
+        // Batch-load clinvar info once for human assemblies instead of N+1 per-row queries
+        Map<Long, String> clinvarCache = new HashMap<>();
+        if(mapKey==38 || mapKey==17){
+            for(VariantIndex variant:variants){
+                long vid = variant.getVariant_id();
+                if(!clinvarCache.containsKey(vid)){
+                    try {
+                        String sig = getClinvarInfo((int) vid);
+                        clinvarCache.put(vid, sig != null && !sig.isEmpty() ? sig : null);
+                    }catch (Exception e){
+                        clinvarCache.put(vid, null);
+                    }
                 }
             }
-            if(!variantIds.contains(key)){
-                variantIds.add(key);
+        }
+
+        java.util.Map<String, VariantIndex> sortedVariants=new LinkedHashMap<>();
+        Set<Long> variantIdsWithTranscripts=new HashSet<>();
+        for(VariantIndex variant:variants){
+            variantIdsWithTranscripts.add(variant.getVariant_id());
+            String key=variant.getVariant_id()+"-"+variant.getSampleId()+"-"+variant.getMapKey();
+
+            String clinvarSig = clinvarCache.get(variant.getVariant_id());
+            if(clinvarSig != null){
+                variant.setClinicalSignificance(clinvarSig);
+            }
+
+            if(!sortedVariants.containsKey(key)){
                 sortedVariants.put(key,variant);
             }else{
                 VariantIndex obj = sortedVariants.get(key);
-                List<VariantTranscript>vtranscripts=new ArrayList<>();
-                boolean exists = false;
-                if(variant.getVariantTranscripts()!=null)
-                for(VariantTranscript transcript:variant.getVariantTranscripts()) {
-                    if (obj != null) {
-
-                        vtranscripts = obj.getVariantTranscripts();
+                if(variant.getVariantTranscripts()!=null && obj != null) {
+                    List<VariantTranscript> vtranscripts = obj.getVariantTranscripts();
+                    for (VariantTranscript transcript : variant.getVariantTranscripts()) {
+                        boolean exists = false;
                         for (VariantTranscript variantTranscript : vtranscripts) {
                             if (transcript.getTranscriptRgdId() == variantTranscript.getTranscriptRgdId()) {
                                 exists = true;
+                                break;
                             }
                         }
                         if (!exists) {
                             vtranscripts.add(transcript);
-                            obj.setVariantTranscripts(vtranscripts);
                         }
                     }
+                    obj.setVariantTranscripts(vtranscripts);
                 }
-                sortedVariants.put(key, obj);
             }
         }
 
-
-        for(Map.Entry e:sortedVariants.entrySet()){
-            vrList.add((VariantIndex) e.getValue());
-        }
-        System.out.println("varaiants size: "+ vrList.size());
-
+        List<VariantIndex> vrList=new ArrayList<>(sortedVariants.values());
         Set<Long> variantIdsWithoutTranscripts=new HashSet<>();
-        if(variantIdsList.size()>variantIdsWithTrancripts.size()){
-            for(int id:variantIdsList){
-                if(!variantIdsWithTrancripts.contains((long)id)){
-                    variantIdsWithoutTranscripts.add((long) id);
-                }
-            }
-            System.out.println("Queried IDS:"+variantIdsList.size()+"\nIds without transcripts:"+ variantIdsWithoutTranscripts.size());
-            if(variantIdsWithoutTranscripts.size()>0) {
-                List<VariantIndex> variantsWithoutTranscripts = getVariantsWithoutTranscripts(mapKey, variantIdsWithoutTranscripts);
-                // Deduplicate: gene_loci and conservation_score joins can produce multiple rows per variant+sample
-                Map<String, VariantIndex> dedupMap = new LinkedHashMap<>();
-                for (VariantIndex vi : variantsWithoutTranscripts) {
-                    String key = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
-                    dedupMap.putIfAbsent(key, vi);
-                }
-                vrList.addAll(dedupMap.values());
+        Set<Long> distinctInputIds = new HashSet<>();
+        for(int id : variantIdsList) {
+            distinctInputIds.add((long) id);
+        }
+        for(long id : distinctInputIds){
+            if(!variantIdsWithTranscripts.contains(id)){
+                variantIdsWithoutTranscripts.add(id);
             }
         }
-        System.out.println("varaiants size include no transcript variants: "+ vrList.size());
+        if(!variantIdsWithoutTranscripts.isEmpty()){
+            List<VariantIndex> variantsWithoutTranscripts = getVariantsWithoutTranscripts(mapKey, variantIdsWithoutTranscripts);
+            // Deduplicate: gene_loci and conservation_score joins can produce multiple rows per variant+sample
+            Map<String, VariantIndex> dedupMap = new LinkedHashMap<>();
+            for (VariantIndex vi : variantsWithoutTranscripts) {
+                String key = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
+                dedupMap.putIfAbsent(key, vi);
+            }
+            vrList.addAll(dedupMap.values());
+        }
         return vrList;
     }
 

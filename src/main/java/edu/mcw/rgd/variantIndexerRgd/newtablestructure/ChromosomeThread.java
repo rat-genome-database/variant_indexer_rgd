@@ -1,7 +1,9 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
+import edu.mcw.rgd.variantIndexerRgd.Manager;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
 import java.util.List;
@@ -9,11 +11,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.logging.log4j.LogManager.getLogger;
+
 public class ChromosomeThread  implements Runnable{
     private final String chr;
     private final int mapKey;
     private final int speciesTypeKey;
-    VariantDao variantDao=new VariantDao();
+    static Logger log=getLogger(Manager.class);
+
     public ChromosomeThread(String chr, int mapKey, int speciesTypeKey){
         this.chr=chr;
         this.mapKey=mapKey;
@@ -21,19 +26,23 @@ public class ChromosomeThread  implements Runnable{
     }
     @Override
     public void run() {
-        ExecutorService executor2 = new MyThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
-        List<Integer> variantIds = null;
+        log.info("########### Started Chromosome:"+chr);
+        VariantDao variantDao = new VariantDao();
+        List<Integer> variantIds;
         try {
             variantIds = variantDao.getUniqueVariantsIds(chr, mapKey, speciesTypeKey);
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
-        System.out.println("UNIQUE VARIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
+        log.info("UNIQUE VARIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
+        ExecutorService executor = new MyThreadPoolExecutor(5, 5, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Collection[] collections = VariantIndexUtils.split(variantIds, 1000);
         for (int i = 0; i < collections.length; i++) {
             Runnable variantsNewTableThread=new VariantsNewTableThread(mapKey, (List<Integer>) collections[i]);
-            executor2.execute(variantsNewTableThread);
+            executor.execute(variantsNewTableThread);
         }
-        VariantIndexUtils.awaitTermination(executor2);
+        log.info("############# END Chromosome:"+ chr);
+        VariantIndexUtils.awaitTermination(executor);
     }
 }
