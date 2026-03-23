@@ -27,6 +27,7 @@ public class ChromosomeThread  implements Runnable{
     @Override
     public void run() {
         log.info("########### Started Chromosome:"+chr);
+        System.out.println("########### Started Chromosome:"+chr);
         VariantDao variantDao = new VariantDao();
         List<Integer> variantIds;
         try {
@@ -36,6 +37,7 @@ public class ChromosomeThread  implements Runnable{
             return;
         }
         log.info("UNIQUE VARIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
+        System.out.println("UNIQUE VARIANTS SIZE of CHR:" + chr + ":\t" + variantIds.size());
         ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Collection[] collections = VariantIndexUtils.split(variantIds, 1000);
         for (int i = 0; i < collections.length; i++) {
@@ -43,6 +45,7 @@ public class ChromosomeThread  implements Runnable{
             executor.execute(variantsNewTableThread);
         }
         log.info("############# END Chromosome:"+ chr);
+        System.out.println("############# END Chromosome:"+ chr);
         VariantIndexUtils.awaitTermination(executor);
     }
 }
