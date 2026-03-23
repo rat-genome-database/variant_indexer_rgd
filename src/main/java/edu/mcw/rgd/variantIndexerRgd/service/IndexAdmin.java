@@ -97,7 +97,7 @@ public class IndexAdmin {
                     .put("index.number_of_shards", shards)
                     .put("index.number_of_replicas", replicates));
         }
-        if(mappings!=null)
+        if(mappings!=null && !mappings.isEmpty())
             request.mapping(mappings, XContentType.JSON);
         org.elasticsearch.client.indices.CreateIndexResponse createIndexResponse = ClientInit.getClient().indices().create(request, RequestOptions.DEFAULT);
 
