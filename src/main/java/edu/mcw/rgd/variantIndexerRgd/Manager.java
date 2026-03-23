@@ -11,6 +11,7 @@ import edu.mcw.rgd.process.Utils;
 import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.service.IndexAdmin;
 
+import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.newtablestructure.*;
 
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
@@ -132,12 +133,13 @@ public class Manager {
             case 9:
             case 13:
                 log.info("Processing "+species+" variants...");
-               log.info("CHROMOSOMES SIZE: "+ chromosomes.size());
+                log.info("CHROMOSOMES SIZE: "+ chromosomes.size());
 
-                       MyThreadPoolExecutor executor2 = new MyThreadPoolExecutor(3, 3, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+                       VariantDao sharedDao = new VariantDao();
+                       int chrThreads = Math.min(chromosomes.size(), 5);
+                       MyThreadPoolExecutor executor2 = new MyThreadPoolExecutor(chrThreads, chrThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
                        for (String chr : chromosomes) {
-                          Runnable chromosomeThread=new ChromosomeThread(chr, mapKey,speciesTypeKey);
-                          executor2.execute(chromosomeThread);
+                          executor2.execute(new ChromosomeThread(chr, mapKey, speciesTypeKey, sharedDao));
                        }
                        VariantIndexUtils.awaitTermination(executor2);
 

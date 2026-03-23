@@ -6,22 +6,25 @@ import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import java.util.ArrayList;
 import java.util.List;
 
-public class VariantsNewTableThread implements Runnable{
-    private List<Integer> variantIds;
-    private int mapKey;
+public class VariantsNewTableThread implements Runnable {
+    private final int mapKey;
+    private final List<Integer> variantIds;
+    private final VariantDao variantDao;
 
-    VariantDao variantDao=new VariantDao();
-    public VariantsNewTableThread(int mapKey, List<Integer> variantIds){
-        this.variantIds=variantIds;
-        this.mapKey=mapKey;
+    public VariantsNewTableThread(int mapKey, List<Integer> variantIds, VariantDao variantDao) {
+        this.variantIds = variantIds;
+        this.mapKey = mapKey;
+        this.variantDao = variantDao;
     }
+
     @Override
     public void run() {
-        List<VariantIndex> indexList = new ArrayList<>();
+        List<VariantIndex> indexList;
         try {
             indexList = variantDao.getVariantsForIndexing(mapKey, variantIds);
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
         if (!indexList.isEmpty()) {
             new ProcessPartChromosome(indexList).run();

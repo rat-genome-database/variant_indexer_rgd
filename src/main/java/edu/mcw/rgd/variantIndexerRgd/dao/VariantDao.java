@@ -2,7 +2,6 @@ package edu.mcw.rgd.variantIndexerRgd.dao;
 
 import edu.mcw.rgd.dao.AbstractDAO;
 import edu.mcw.rgd.dao.DataSourceFactory;
-
 import edu.mcw.rgd.dao.impl.VariantInfoDAO;
 import edu.mcw.rgd.dao.spring.IntListQuery;
 import edu.mcw.rgd.datamodel.VariantInfo;
@@ -14,38 +13,26 @@ import org.apache.logging.log4j.Logger;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
-/**
- * Created by jthota on 1/16/2020.
- */
 public class VariantDao extends AbstractDAO {
     private static final Logger log = LogManager.getLogger(VariantDao.class);
     private static final int ORACLE_IN_LIMIT = 1000;
 
-    VariantInfoDAO variantInfoDAO = new VariantInfoDAO();
+    private final VariantInfoDAO variantInfoDAO = new VariantInfoDAO();
 
     public String getConScoreTable(int mapKey, String genicStatus) {
         switch (mapKey) {
-            case 17:
-                return " B37_CONSCORE_PART_IOT ";
-            case 38:
-                return " CONSERVATION_SCORE_HG38 ";
-            case 60:
-                return " CONSERVATION_SCORE ";
-            case 70:
-                return " CONSERVATION_SCORE_5 ";
-            case 360:
-                return " CONSERVATION_SCORE_6 ";
-            default:
-                return "";
+            case 17:  return " B37_CONSCORE_PART_IOT ";
+            case 38:  return " CONSERVATION_SCORE_HG38 ";
+            case 60:  return " CONSERVATION_SCORE ";
+            case 70:  return " CONSERVATION_SCORE_5 ";
+            case 360: return " CONSERVATION_SCORE_6 ";
+            default:  return "";
         }
     }
 
-    /**
-     * Builds an Oracle-safe IN clause for lists that may exceed 1000 items.
-     * E.g. for column "v.rgd_id" and 2500 ids: "(v.rgd_id in (1,2,...,1000) or v.rgd_id in (1001,...,2000) or v.rgd_id in (2001,...,2500))"
-     */
     static String buildInClause(String column, List<Integer> ids) {
         if (ids.size() <= ORACLE_IN_LIMIT) {
             return column + " in (" + ids.stream().map(Object::toString).collect(Collectors.joining(",")) + ")";
@@ -60,68 +47,97 @@ public class VariantDao extends AbstractDAO {
         return sb.toString();
     }
 
-    public List<Integer> getUniqueVariantsIds(String chr, int mapKey, int speciesTypeKey) throws Exception {
-        String sql = "select distinct v.rgd_id from variant v, variant_map_data vmd  " +
+    /**
+     * Streams variant IDs in pages directly from DB, avoiding loading all IDs into memory.
+     * Calls the processor for each page of IDs.
+     */
+    public void processVariantIdsByPage(String chr, int mapKey, int speciesTypeKey, int pageSize, VariantIdPageProcessor processor) throws Exception {
+        String sql = "select distinct v.rgd_id from variant v, variant_map_data vmd " +
                 "where v.rgd_id=vmd.rgd_id " +
                 " and v.species_type_key=? " +
                 " and vmd.chromosome=? " +
-                " and vmd.map_key=?";
-        IntListQuery q = new IntListQuery(DataSourceFactory.getInstance().getCarpeNovoDataSource(), sql);
-        return execute(q, speciesTypeKey, chr, mapKey);
+                " and vmd.map_key=? " +
+                " order by v.rgd_id";
+        DataSource ds = DataSourceFactory.getInstance().getCarpeNovoDataSource();
+        try (Connection conn = ds.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, speciesTypeKey);
+            stmt.setString(2, chr);
+            stmt.setInt(3, mapKey);
+            stmt.setFetchSize(pageSize);
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<Integer> page = new ArrayList<>(pageSize);
+                while (rs.next()) {
+                    page.add(rs.getInt("rgd_id"));
+                    if (page.size() >= pageSize) {
+                        processor.process(page);
+                        page = new ArrayList<>(pageSize);
+                    }
+                }
+                if (!page.isEmpty()) {
+                    processor.process(page);
+                }
+            }
+        }
+    }
+
+    @FunctionalInterface
+    public interface VariantIdPageProcessor {
+        void process(List<Integer> variantIds) throws Exception;
     }
 
     /**
-     * Loads variant index data using separate focused queries instead of one massive JOIN.
-     * This avoids the Cartesian product explosion that multiplies rows across
-     * transcripts × gene_loci × conservation_scores × samples.
+     * Loads variant index data using parallel focused queries.
+     * Runs base variants, transcripts, gene_loci, and conservation scores concurrently.
      */
     public List<VariantIndex> getVariantsForIndexing(int mapKey, List<Integer> variantIdsList) throws Exception {
         DataSource ds = DataSourceFactory.getInstance().getCarpeNovoDataSource();
-
-        // Step 1: Get base variant + sample data (no transcript/gene_loci/conscore joins)
-        Map<String, VariantIndex> variantMap = loadBaseVariants(ds, variantIdsList, mapKey);
-        log.info("Base variants loaded: " + variantMap.size());
-
-        // Step 2: Batch-load transcripts grouped by variant_id
-        Set<Long> variantRgdIds = new HashSet<>();
-        for (VariantIndex vi : variantMap.values()) {
-            variantRgdIds.add(vi.getVariant_id());
-        }
-        Map<Long, List<VariantTranscript>> transcriptMap = loadTranscripts(ds, variantIdsList, mapKey);
-        for (VariantIndex vi : variantMap.values()) {
-            List<VariantTranscript> vts = transcriptMap.get(vi.getVariant_id());
-            if (vts != null) {
-                vi.setVariantTranscripts(vts);
-            }
-        }
-
-        // Step 3: Batch-load gene_loci and conservation scores
-        Map<Long, List<String>> geneLociMap = loadGeneLoci(ds, variantIdsList, mapKey);
         String csTable = getConScoreTable(mapKey, null);
-        Map<Long, List<String>> conScoreMap = !csTable.isEmpty() ? loadConservationScores(ds, variantIdsList, csTable) : Collections.emptyMap();
 
-        for (VariantIndex vi : variantMap.values()) {
-            List<String> regionNames = geneLociMap.get(vi.getStartPos());
-            if (regionNames != null && !regionNames.isEmpty()) {
-                vi.setRegionName(regionNames);
-                List<String> lc = new ArrayList<>();
-                for (String name : regionNames) {
-                    lc.add(name.toLowerCase());
+        // Run all 4 queries in parallel
+        ExecutorService pool = Executors.newFixedThreadPool(4);
+        try {
+            Future<Map<String, VariantIndex>> baseFuture = pool.submit(() -> loadBaseVariants(ds, variantIdsList, mapKey));
+            Future<Map<Long, List<VariantTranscript>>> transcriptFuture = pool.submit(() -> loadTranscripts(ds, variantIdsList, mapKey));
+            Future<Map<Long, List<String>>> geneLociFuture = pool.submit(() -> loadGeneLoci(ds, variantIdsList, mapKey));
+            Future<Map<Long, List<String>>> conScoreFuture = !csTable.isEmpty()
+                    ? pool.submit(() -> loadConservationScores(ds, variantIdsList, csTable))
+                    : CompletableFuture.completedFuture(Collections.emptyMap());
+
+            Map<String, VariantIndex> variantMap = baseFuture.get();
+            Map<Long, List<VariantTranscript>> transcriptMap = transcriptFuture.get();
+            Map<Long, List<String>> geneLociMap = geneLociFuture.get();
+            Map<Long, List<String>> conScoreMap = conScoreFuture.get();
+
+            // Merge results
+            Set<Long> variantRgdIds = new HashSet<>();
+            for (VariantIndex vi : variantMap.values()) {
+                long vid = vi.getVariant_id();
+                variantRgdIds.add(vid);
+
+                List<VariantTranscript> vts = transcriptMap.get(vid);
+                if (vts != null) vi.setVariantTranscripts(vts);
+
+                List<String> regionNames = geneLociMap.get(vi.getStartPos());
+                if (regionNames != null && !regionNames.isEmpty()) {
+                    vi.setRegionName(regionNames);
+                    List<String> lc = new ArrayList<>(regionNames.size());
+                    for (String name : regionNames) lc.add(name.toLowerCase());
+                    vi.setRegionNameLc(lc);
                 }
-                vi.setRegionNameLc(lc);
-            }
-            List<String> scores = conScoreMap.get(vi.getStartPos());
-            if (scores != null && !scores.isEmpty()) {
-                vi.setConScores(scores);
-            }
-        }
 
-        // Step 4: Batch-load clinvar info for human assemblies
-        if (mapKey == 38 || mapKey == 17) {
-            loadClinvarBatch(variantRgdIds, variantMap);
-        }
+                List<String> scores = conScoreMap.get(vi.getStartPos());
+                if (scores != null && !scores.isEmpty()) vi.setConScores(scores);
+            }
 
-        return new ArrayList<>(variantMap.values());
+            if (mapKey == 38 || mapKey == 17) {
+                loadClinvarBatch(variantRgdIds, variantMap);
+            }
+
+            return new ArrayList<>(variantMap.values());
+        } finally {
+            pool.shutdown();
+        }
     }
 
     private Map<String, VariantIndex> loadBaseVariants(DataSource ds, List<Integer> variantIdsList, int mapKey) throws Exception {
@@ -169,7 +185,6 @@ public class VariantDao extends AbstractDAO {
                     vi.setZygosityNumAllele(rs.getInt("zygosity_num_allele"));
                     vi.setZygosityInPseudo(rs.getString("zygosity_in_pseudo"));
                     vi.setQualityScore(rs.getInt("quality_score"));
-
                     String key = vi.getVariant_id() + "-" + vi.getSampleId() + "-" + vi.getMapKey();
                     result.putIfAbsent(key, vi);
                 }
@@ -195,7 +210,6 @@ public class VariantDao extends AbstractDAO {
 
         Map<Long, List<VariantTranscript>> result = new HashMap<>();
         Set<String> seen = new HashSet<>();
-
         try (Connection conn = ds.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, mapKey);
@@ -222,8 +236,7 @@ public class VariantDao extends AbstractDAO {
                     try {
                         vt.setTranscriptSymbol(rs.getString("transcript_acc_id"));
                         vt.setProteinSymbol(rs.getString("protein_acc_id"));
-                    } catch (Exception e) { /* columns may not exist */ }
-
+                    } catch (Exception ignored) {}
                     result.computeIfAbsent(variantId, k -> new ArrayList<>()).add(vt);
                 }
             }
@@ -296,10 +309,5 @@ public class VariantDao extends AbstractDAO {
                 vi.setClinicalSignificance(sig);
             }
         }
-    }
-
-    public String getClinvarInfo(int variantRgdId) throws Exception {
-        VariantInfo info = variantInfoDAO.getVariant(variantRgdId);
-        return info.getClinicalSignificance();
     }
 }
