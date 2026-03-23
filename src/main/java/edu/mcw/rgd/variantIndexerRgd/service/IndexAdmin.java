@@ -1,6 +1,7 @@
 package edu.mcw.rgd.variantIndexerRgd.service;
 
 import edu.mcw.rgd.services.ClientInit;
+import edu.mcw.rgd.services.RgdContext;
 import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,7 +13,11 @@ import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.cluster.metadata.AliasMetadata;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.xcontent.XContentType;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,7 +34,13 @@ public class IndexAdmin {
      * picks the other index as the new target, deletes and recreates it,
      * and sets newAlias/oldAlias on RgdIndex.
      */
-    public void createIndex(String settings, String species) throws Exception {
+    public void createIndex(String mappings, String species) throws Exception {
+
+        String path="";
+        if(mappings!=null && !mappings.equals("")){
+            path+="data/"+mappings+".json";
+            mappings=new String(Files.readAllBytes(Paths.get(path)));
+        }
         RgdIndex rgdIndex = RgdIndex.getInstance();
         String aliasName = rgdIndex.getIndex();
         List<String> indices = rgdIndex.getIndices();
@@ -63,9 +74,34 @@ public class IndexAdmin {
                     RequestOptions.DEFAULT);
         }
         log.info("Creating index: " + newIndex);
-        CreateIndexResponse createResponse = client.indices().create(
-                new CreateIndexRequest(newIndex), RequestOptions.DEFAULT);
-        log.info("Index created: " + newIndex + " acknowledged=" + createResponse.isAcknowledged());
+        int replicates=0;
+        int shards=5;
+//        if(!index.contains("dev") && !index.contains("test")){
+        if(RgdContext.isProduction() || RgdContext.isPipelines()){
+            replicates=1;
+        }
+        String analyzers=null;
+        try {
+            analyzers=  new String(Files.readAllBytes(Paths.get("data/analyzers.json")));
+        }catch (Exception ignored){}
+
+        /********* create index, put mappings and analyzers ****/
+        CreateIndexRequest request=new CreateIndexRequest(newIndex);
+        if(analyzers!=null) {
+            request.settings(Settings.builder()
+                    .put("index.number_of_shards", shards)
+                    .put("index.number_of_replicas", replicates)
+                    .loadFromSource(analyzers, XContentType.JSON));
+        }else{
+            request.settings(Settings.builder()
+                    .put("index.number_of_shards", shards)
+                    .put("index.number_of_replicas", replicates));
+        }
+        if(mappings!=null)
+            request.mapping(mappings, XContentType.JSON);
+        org.elasticsearch.client.indices.CreateIndexResponse createIndexResponse = ClientInit.getClient().indices().create(request, RequestOptions.DEFAULT);
+
+        log.info("Index created: " + newIndex + " acknowledged=" + createIndexResponse.isAcknowledged());
 
         // Set on RgdIndex so the pipeline writes to newIndex and switchAlias knows what to swap
         rgdIndex.setNewAlias(newIndex);
