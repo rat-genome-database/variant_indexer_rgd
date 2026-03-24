@@ -56,16 +56,33 @@ jar {
                 'Built-By': System.getProperty('user.name'),
                 'Built-Date': new Date(),
                 'Built-JDK': System.getProperty('java.version'),
-                'Class-Path': configurations.runtimeClasspath.collect { it.getName() }.join(' '),
                 'Main-Class': mainClassName
         )
     }
 }
 
+// Fat jar: bundles all dependencies into a single jar
+task fatJar(type: Jar) {
+    archiveBaseName = myAppName
+    archiveClassifier = 'all'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Main-Class': mainClassName
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    with jar
+}
+
 distributions {
     main {
-        //baseName = myAppName
         distributionBaseName = myAppName
+        contents {
+            from(fatJar) {
+                into 'lib'
+            }
+        }
     }
 }
 

@@ -11,6 +11,5 @@ cd $APPDIR
 pwd
 DB_OPTS="-Dspring.config=/home/rgddata/pipelines/properties/default_db2.xml"
 LOG4J_OPTS="-Dlog4j2.configurationFile=file://$APPDIR/properties/log4j2.xml"
-export VARIANT_INDEXER_RGD_OPTS="$DB_OPTS $LOG4J_OPTS"
-bin/$APPNAME "$@" | tee run.log
+java $DB_OPTS $LOG4J_OPTS -jar lib/${APPNAME}-all.jar "$@" 2>&1 | tee run.log
 #mailx -s "[$SERVER] Variant Indexer Pipeline OK" $EMAIL_LIST < run.log
