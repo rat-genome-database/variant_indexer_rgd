@@ -1,31 +1,27 @@
 package edu.mcw.rgd.variantIndexerRgd.es;
 
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
-import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndexObject;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.xcontent.XContentType;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 public class Indexer  {
-    private SearchHit[] hits;
-    public Indexer(SearchHit[] hits){ this.hits=hits;}
+    private List<Hit<Map>> hits;
+    public Indexer(List<Hit<Map>> hits){ this.hits=hits;}
   //  @Override
     public void run() {
-        BulkRequest request = new BulkRequest();
-        for(SearchHit h:hits) {
-            Map source = h.getSourceAsMap();
+        BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
+        try {
+        for(Hit<Map> h:hits) {
+            Map source = h.source();
             ObjectMapper mapper=new ObjectMapper();
             VariantIndexObject m=mapper.convertValue(source, VariantIndexObject.class);
             VariantMapData v=m.getVariant();
@@ -62,21 +58,14 @@ public class Indexer  {
                object.setZygosityStatus(s.getZygosityStatus());
 
                 try {
-                    ObjectMapper map=new ObjectMapper();
-                    byte[] json = new byte[0];
-                    json =  map.writeValueAsBytes(object);
-                    request.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
+                    bulkProcessor.add(BulkIndexProcessor.indexOp(object));
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
-            try {
-                ClientInit.getClient().bulk(request, RequestOptions.DEFAULT);
-                request=new BulkRequest();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        }
+        } finally {
+            bulkProcessor.close();
         }
 
     }

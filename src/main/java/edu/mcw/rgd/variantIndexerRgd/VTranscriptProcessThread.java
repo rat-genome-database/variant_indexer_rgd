@@ -1,29 +1,15 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
 import edu.mcw.rgd.process.FastaParser;
 import edu.mcw.rgd.process.Utils;
-import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 import edu.mcw.rgd.variantIndexerRgd.model.CommonFormat2Line;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantTranscript;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.xcontent.XContentType;
 
-
-import java.net.UnknownHostException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by jthota on 12/27/2019.
@@ -43,41 +29,8 @@ public class VTranscriptProcessThread implements Runnable {
         FastaParser fastaFile= new FastaParser();
         //   fastaFile.setMapKey(mapKey);
 
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                (request, bulkListener) ->
-                {
-                    try {
-                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                    } catch (UnknownHostException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
+        BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
+        try {
         for(CommonFormat2Line line:lines){
             String chr = line.getChr();
             int position = line.getPos();
@@ -117,13 +70,7 @@ public class VTranscriptProcessThread implements Runnable {
               //  loader.indexTranscripts(loader.processVariantTranscript(chr,position ,(int)endPos, refNuc, varNuc, 17, geneCache, rsId, fastaFile));
                List<VariantTranscript> vts=loader.processVariantTranscript(chr,position ,(int)endPos, refNuc, varNuc, 17, geneCache, rsId, fastaFile);
                 for (VariantTranscript o : vts) {
-
-                    ObjectMapper mapper = new ObjectMapper();
-                    String json = new String();
-                        json = mapper.writeValueAsString(o);
-                        bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
-
+                        bulkProcessor.add(BulkIndexProcessor.indexOp(o));
                 }
 
             } catch (Exception e) {
@@ -131,13 +78,7 @@ public class VTranscriptProcessThread implements Runnable {
             }
 
         }
-
-        try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            bulkProcessor.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
+        } finally {
             bulkProcessor.close();
         }
    //     System.out.println("***********"+Thread.currentThread().getName()  + " || LINE_CLUSTER: "+ count+"\tEND ....INDEXED TRANSCRIPTS:  "+"\t"+ new Date()+"*********");

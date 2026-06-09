@@ -1,28 +1,12 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
-import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.xcontent.XContentType;
 
-
-import java.net.UnknownHostException;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
 
 public class Indexer implements Runnable{
     private List<VariantData> vrs;
@@ -63,59 +47,14 @@ public class Indexer implements Runnable{
 
     }
     void index(Map<Integer, VariantIndex>  processedMap){
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                (request, bulkListener) ->
-                {
-                    try {
-                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                    } catch (UnknownHostException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
-
-                for(Entry entry:processedMap.entrySet()){
-                    VariantIndex object= (VariantIndex) entry.getValue();
-                   // System.out.println(object.getChromosome()+"\t"+object.getStartPos());
-                    try {
-                        ObjectMapper mapper=new ObjectMapper();
-                        byte[] json =  mapper.writeValueAsBytes(object);
-                        bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                    } catch (JsonProcessingException e) {
-                        e.printStackTrace();
-                    }
-                }
+        BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
         try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            bulkProcessor.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
+            for(Entry entry:processedMap.entrySet()){
+                VariantIndex object= (VariantIndex) entry.getValue();
+               // System.out.println(object.getChromosome()+"\t"+object.getStartPos());
+                bulkProcessor.add(BulkIndexProcessor.indexOp(object));
+            }
+        } finally {
             bulkProcessor.close();
         }
 

@@ -1,18 +1,12 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import edu.mcw.rgd.datamodel.ConservationScore;
-import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.xcontent.XContentType;
 
 
 import java.util.*;
@@ -44,11 +38,7 @@ public class ProcessVariant implements Runnable {
                 addConservationScores(vi);
 
                     try {
-                        ObjectMapper mapper = new ObjectMapper();
-                        String json = mapper.writeValueAsString(vi);
-                     bulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                     //    IndexRequest request=  new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
-                     //      ESClient.getClient().index(request, RequestOptions.DEFAULT);
+                     BulkIndexProcessor.index(vi);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

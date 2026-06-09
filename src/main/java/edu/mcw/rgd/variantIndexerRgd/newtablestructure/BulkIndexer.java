@@ -1,14 +1,8 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantMapData;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
-import edu.mcw.rgd.variantIndexerRgd.model.Json;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.xcontent.XContentType;
-
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,14 +22,7 @@ public class BulkIndexer implements Runnable {
         List<VariantSampleDetail> variantSamplesDetails = getSamples(vmd.getId(),samples);
         for (VariantSampleDetail vsd : variantSamplesDetails) {
             mapSampleDetails(vsd, vi);
-            try {
-                byte[] json = Json.serializer().mapper().writeValueAsBytes(vi);
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
-                //     bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
-            }
+            BulkIndexProcessor.index(vi);
         }
     }
     List<VariantSampleDetail> getSamples(long variantRgdId, List<VariantSampleDetail> samples){

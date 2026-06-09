@@ -1,23 +1,11 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.mcw.rgd.datamodel.RgdIndex;
-import edu.mcw.rgd.services.ClientInit;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import org.elasticsearch.action.bulk.*;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.xcontent.XContentType;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 
-
-import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by jthota on 1/16/2020.
@@ -41,62 +29,13 @@ public class VariantRatIndexer implements Runnable {
      //   List<VariantIndex> vrs=variantDao.getVariantResults(sampleId, chromosome, mapKey);
       //   System.out.println("Variants Size:"+vrs.size()+"\tMapKey:"+mapKey+"\tChr:"+chromosome+"\tSampleId:"+sampleId );
         if(vrs.size()>0){
-            BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-                @Override
-                public void beforeBulk(long executionId, BulkRequest request) {
-                    //        System.out.println("ACTIONS: "+request.numberOfActions());
-                }
-
-                @Override
-                public void afterBulk(long executionId, BulkRequest request,
-                                      BulkResponse response) {
-                    //     System.out.println("in process...");
-                }
-
-                @Override
-                public void afterBulk(long executionId, BulkRequest request,
-                                      Throwable failure) {
-
-                }
-            };
-            BulkProcessor bulkProcessor = BulkProcessor.builder(
-                    (request, bulkListener) ->
-                    {
-                        try {
-                            ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                        } catch (UnknownHostException e) {
-                            throw new RuntimeException(e);
-                        }
-                    },
-                    listener)
-                    .setBulkActions(10000)
-                    .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                    .setFlushInterval(TimeValue.timeValueSeconds(5))
-                    .setConcurrentRequests(1)
-                    .setBackoffPolicy(
-                            BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                    .build();
-
-            ObjectMapper mapper = new ObjectMapper();
-            for (VariantIndex o : vrs) {
-                byte[] json = new byte[0];
-                try {
-                    json = mapper.writeValueAsBytes(o);
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-
-                bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
-
-            }
+            BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
 
             try {
-                bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-                bulkProcessor.close();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }finally {
+                for (VariantIndex o : vrs) {
+                    bulkProcessor.add(BulkIndexProcessor.indexOp(o));
+                }
+            } finally {
                 bulkProcessor.close();
             }
             System.out.println("Indexed mapKey " + mapKey + ", chromosome: "+ chromosome+", Variant objects Size: " + vrs.size() + " Exiting thread.");

@@ -1,7 +1,8 @@
 package edu.mcw.rgd.variantIndexerRgd.dao;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import edu.mcw.rgd.dao.DataSourceFactory;
 import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
@@ -14,26 +15,8 @@ import edu.mcw.rgd.util.Zygosity;
 
 import edu.mcw.rgd.variantIndexerRgd.VariantIndexerThread;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-
-import org.elasticsearch.client.RequestOptions;
-
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.index.query.BoolQueryBuilder;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.xcontent.XContentType;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.xml.XmlBeanDefinitionReader;
 import org.springframework.core.io.FileSystemResource;
@@ -41,14 +24,12 @@ import org.springframework.core.io.FileSystemResource;
 import java.io.IOException;
 
 import java.math.BigDecimal;
-import java.net.UnknownHostException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by jthota on 11/15/2019.
@@ -298,66 +279,12 @@ public class VariantLoad3 {
     public void index(List<VariantIndex> vrs) throws IOException {
 
         if(vrs.size()>0){
-            BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-                @Override
-                public void beforeBulk(long executionId, BulkRequest request) {
-                    //        System.out.println("ACTIONS: "+request.numberOfActions());
-                }
-
-                @Override
-                public void afterBulk(long executionId, BulkRequest request,
-                                      BulkResponse response) {
-                    //     System.out.println("in process...");
-                }
-
-                @Override
-                public void afterBulk(long executionId, BulkRequest request,
-                                      Throwable failure) {
-
-                }
-            };
-
-            BulkProcessor bulkProcessor = BulkProcessor.builder(
-                    (request, bulkListener) ->
-                    {
-                        try {
-                            ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                        } catch (UnknownHostException e) {
-                            throw new RuntimeException(e);
-                        }
-                    },
-                    listener)
-                    .setBulkActions(10000)
-                    .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                    .setFlushInterval(TimeValue.timeValueSeconds(5))
-                    .setConcurrentRequests(1)
-                    .setBackoffPolicy(
-                            BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                    .build();
-
-
-        //   final ObjectMapper mapper = new ObjectMapper();
-
-            for (VariantIndex o : vrs) {
-
-
-                byte[] json = new byte[0];
-                try {
-                    ObjectMapper mapper=new ObjectMapper();
-                    json =  mapper.writeValueAsBytes(o);
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-                bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-             }
-
-
+            BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
             try {
-                bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-                bulkProcessor.close();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }finally {
+                for (VariantIndex o : vrs) {
+                    bulkProcessor.add(BulkIndexProcessor.indexOp(o));
+                }
+            } finally {
                 bulkProcessor.close();
             }
 
@@ -367,61 +294,12 @@ public class VariantLoad3 {
         }
     }
     public void indexTranscripts(List<VariantTranscript> vts) throws IOException {
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                (request, bulkListener) ->
-                {
-                    try {
-                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                    } catch (UnknownHostException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
-
-        for (VariantTranscript o : vts) {
-
-                ObjectMapper mapper = new ObjectMapper();
-                String json = new String();
-                try {
-                    json = mapper.writeValueAsString(o);
-                    bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-
-            }
+        BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
         try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            bulkProcessor.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
+            for (VariantTranscript o : vts) {
+                bulkProcessor.add(BulkIndexProcessor.indexOp(o));
+            }
+        } finally {
             bulkProcessor.close();
         }
 
@@ -459,31 +337,22 @@ public class VariantLoad3 {
         return variantIndexObj;
     }
     public List<edu.mcw.rgd.datamodel.variants.VariantTranscript> getVariantTranscripts(long startPos, String chromosome, String refNuc, String varNuc) throws IOException {
-        SearchSourceBuilder srb=new SearchSourceBuilder();
 
-        if(refNuc!=null && varNuc!=null) {
-            srb.query(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.termQuery("chromosome", chromosome))
-                    .filter(QueryBuilders.termQuery("startPos", startPos))
-                    .filter(QueryBuilders.termQuery("refNuc", refNuc))
-                    .filter(QueryBuilders.termQuery("varNuc", varNuc))
-            );
-        }else{
-            srb.query(QueryBuilders.boolQuery()
-                    .must(QueryBuilders.termQuery("chromosome", chromosome))
-                    .filter(QueryBuilders.termQuery("startPos", startPos)));
-        }
-
-
-
-      SearchRequest request=new SearchRequest("transcripts_human_dev1"); // chr 1 transcripts
-        request.source(srb);
-
-
-        SearchResponse sr=ClientInit.getClient().search(request, RequestOptions.DEFAULT);
+        SearchResponse<Map> sr=ClientInit.getClient().search(s -> s
+                .index("transcripts_human_dev1") // chr 1 transcripts
+                .query(q -> q.bool(b -> {
+                    b.must(m -> m.term(t -> t.field("chromosome").value(chromosome)));
+                    b.filter(f -> f.term(t -> t.field("startPos").value(startPos)));
+                    if(refNuc!=null && varNuc!=null) {
+                        b.filter(f -> f.term(t -> t.field("refNuc").value(refNuc)));
+                        b.filter(f -> f.term(t -> t.field("varNuc").value(varNuc)));
+                    }
+                    return b;
+                })),
+                Map.class);
         List<edu.mcw.rgd.datamodel.variants.VariantTranscript> tds= new ArrayList<>();
-        for(SearchHit h:sr.getHits().getHits()){
-            Map source=h.getSourceAsMap();
+        for(Hit<Map> h:sr.hits().hits()){
+            Map source=h.source();
            edu.mcw.rgd.datamodel.variants.VariantTranscript td=new edu.mcw.rgd.datamodel.variants.VariantTranscript();
             td.setTripletError((String) source.get("tripletError"));
             td.setSynStatus((String) source.get("synStatus"));
@@ -502,19 +371,15 @@ public class VariantLoad3 {
         return tds;
     }
     public List<VariantTranscript> getVariantTranscriptsByChromosome(String chromosome) throws IOException {
-        SearchSourceBuilder srb=new SearchSourceBuilder();
-        BoolQueryBuilder queryBuilder=new BoolQueryBuilder();
-        queryBuilder.must(QueryBuilders.termQuery("chromosome", chromosome));
-        queryBuilder.must(QueryBuilders.termQuery("locationName.keyword", "EXON"));
-        srb.query(queryBuilder);
-        SearchRequest request=new SearchRequest("transcripts_human_dev1");
-        request.source(srb);
-
-        //   RestHighLevelClient client=ESClient.getInstance();
-        SearchResponse sr=ClientInit.getClient().search(request, RequestOptions.DEFAULT);
+        SearchResponse<Map> sr=ClientInit.getClient().search(s -> s
+                .index("transcripts_human_dev1")
+                .query(q -> q.bool(b -> b
+                        .must(m -> m.term(t -> t.field("chromosome").value(chromosome)))
+                        .must(m -> m.term(t -> t.field("locationName.keyword").value("EXON"))))),
+                Map.class);
         List<VariantTranscript> tds= new ArrayList<>();
-        for(SearchHit h:sr.getHits().getHits()){
-            Map source=h.getSourceAsMap();
+        for(Hit<Map> h:sr.hits().hits()){
+            Map source=h.source();
             VariantTranscript td=new VariantTranscript();
 
             td.setTranscriptRgdId((Integer) source.get("transcriptRgdId"));

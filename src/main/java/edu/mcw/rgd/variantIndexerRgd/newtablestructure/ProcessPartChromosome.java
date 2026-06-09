@@ -3,12 +3,7 @@ package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.datamodel.GeneLoci;
 
-import edu.mcw.rgd.datamodel.RgdIndex;
-import edu.mcw.rgd.variantIndexerRgd.model.Json;
-
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.xcontent.XContentType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,9 +23,7 @@ public class ProcessPartChromosome implements  Runnable{
 
         for(VariantIndex vi:indexList) {
             try {
-                String json = Json.serializer().mapper().writeValueAsString(vi);
-                BulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
+                BulkIndexProcessor.index(vi);
             } catch (Exception e) {
                 e.printStackTrace();
             }

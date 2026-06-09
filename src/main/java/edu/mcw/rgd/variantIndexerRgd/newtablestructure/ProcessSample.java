@@ -1,16 +1,11 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.mcw.rgd.datamodel.ConservationScore;
-import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.xcontent.XContentType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,9 +37,6 @@ public class ProcessSample  implements Runnable{
 
       /*  ExecutorService executor = new MyThreadPoolExecutor(10, 10, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
         Runnable workerThread=null;*/
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
-        mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         for(VariantIndex vi: indexList) {
 
             try {
@@ -54,9 +46,7 @@ public class ProcessSample  implements Runnable{
                 addConservationScores(vi);
 
                 try {
-                    String json = mapper.writeValueAsString(vi);
-                    bulkIndexProcessor.bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
+                    BulkIndexProcessor.index(vi);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

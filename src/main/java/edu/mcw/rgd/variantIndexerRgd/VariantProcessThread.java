@@ -1,32 +1,12 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import edu.mcw.rgd.datamodel.RgdIndex;
-import edu.mcw.rgd.services.ClientInit;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
 import edu.mcw.rgd.variantIndexerRgd.model.*;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.xcontent.XContentType;
-
-
-import java.io.*;
-
-import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -56,62 +36,13 @@ public class VariantProcessThread implements Runnable {
     public void run(){
       System.out.println(Thread.currentThread().getName()  + " || LINE_CLUSTER : "+ clusterCount+" started .... " + new Date());
 
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
-            }
+        BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
 
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                (request, bulkListener) ->
-                {
-                    try {
-                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                    } catch (UnknownHostException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
-
-
-            ObjectMapper mapper = new ObjectMapper();
-            for(VariantIndexObject obj:indexObjects){
-                try {
-                     String json =  mapper.writeValueAsString(obj);
-                    bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-
-
-    //    reader.close();
         try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            bulkProcessor.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
+            for(VariantIndexObject obj:indexObjects){
+                bulkProcessor.add(BulkIndexProcessor.indexOp(obj));
+            }
+        } finally {
             bulkProcessor.close();
         }
    //   System.out.println("***********"+Thread.currentThread().getName()+ "\tLINE_CLUSTER:"+clusterCount + "\tEND ...."+"\t"+ new Date()+"*********");

@@ -1,8 +1,7 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
 import edu.mcw.rgd.dao.impl.GeneLociDAO;
 import edu.mcw.rgd.datamodel.GeneLoci;
 import edu.mcw.rgd.datamodel.RgdIndex;
@@ -12,20 +11,9 @@ import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantData;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndexObject;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 import org.apache.logging.log4j.Logger;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.xcontent.XContentType;
 
-
-import java.net.UnknownHostException;
 import java.util.*;
 
 
@@ -66,15 +54,7 @@ public class RatIndexer implements Runnable {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                ObjectMapper mapper=new ObjectMapper();
-                byte[] json = new byte[0];
-                try {
-                    json = mapper.writeValueAsBytes(object);
-                } catch (JsonProcessingException e) {
-                    e.printStackTrace();
-                }
-                IndexRequest request= new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
-                ClientInit.getClient().index(request, RequestOptions.DEFAULT);
+                ClientInit.getClient().index(i -> i.index(RgdIndex.getNewAlias()).document(object));
                 log.info(Thread.currentThread().getName()+"\tMAPKEY:"+ v.getMapKey() +"\tCHR: "+v.getChromosome() +"\tSTART POS: "+ v.getStartPos() +"\tEND!!" );
 
             } catch (Exception e) {
@@ -103,43 +83,8 @@ public class RatIndexer implements Runnable {
     }
 
 
-    public BulkProcessor getBulkProcessor(){
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-         return BulkProcessor.builder(
-                (request, bulkListener) ->
-                {
-                    try {
-                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                    } catch (UnknownHostException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
-
+    public BulkIngester<Void> getBulkProcessor(){
+         return BulkIndexProcessor.newIngester(1);
     }
 
 }

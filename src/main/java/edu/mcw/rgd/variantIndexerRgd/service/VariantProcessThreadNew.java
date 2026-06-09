@@ -13,15 +13,8 @@ import edu.mcw.rgd.variantIndexerRgd.VariantIndexerThread;
 import edu.mcw.rgd.variantIndexerRgd.model.CommonFormat2Line;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
-import org.elasticsearch.action.index.IndexRequest;
-
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.elasticsearch.xcontent.XContentType;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -169,10 +162,7 @@ public class VariantProcessThreadNew implements Runnable {
 
             try {
                 VariantIndex obj=getIndexObject(v, variantTranscripts);
-                com.fasterxml.jackson.databind.ObjectMapper mapper=new com.fasterxml.jackson.databind.ObjectMapper();
-                String json =  mapper.writeValueAsString(obj);
-                IndexRequest request= new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON);
-                ClientInit.getClient().index(request, RequestOptions.DEFAULT);
+                ClientInit.getClient().index(i -> i.index(RgdIndex.getNewAlias()).document(obj));
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -229,17 +219,14 @@ public class VariantProcessThreadNew implements Runnable {
         return "snv";
     }
     public List<VariantTranscript> getVariantTranscripts(long startPos) throws IOException {
-        SearchSourceBuilder srb=new SearchSourceBuilder();
-        srb.query(QueryBuilders.termQuery("startPos", startPos));
         //    SearchRequest request=new SearchRequest("transcripts_human_dev1"); //chr 21 transcripts
-        SearchRequest request=new SearchRequest("transcripts_human_test2"); // chr 1 transcripts
-        request.source(srb);
-
-        //   RestHighLevelClient client=ESClient.getInstance();
-        SearchResponse sr=ClientInit.getClient().search(request, RequestOptions.DEFAULT);
+        SearchResponse<Map> sr=ClientInit.getClient().search(s -> s
+                .index("transcripts_human_test2") // chr 1 transcripts
+                .query(q -> q.term(t -> t.field("startPos").value(startPos))),
+                Map.class);
         List<VariantTranscript> tds= new ArrayList<>();
-        for(SearchHit h:sr.getHits().getHits()){
-            Map source=h.getSourceAsMap();
+        for(Hit<Map> h:sr.hits().hits()){
+            Map source=h.source();
             VariantTranscript td=new VariantTranscript();
             td.setTripletError((String) source.get("tripletError"));
             td.setSynStatus((String) source.get("synStatus"));

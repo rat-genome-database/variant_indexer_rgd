@@ -1,32 +1,20 @@
 package edu.mcw.rgd.variantIndexerRgd;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
 import edu.mcw.rgd.dao.impl.MapDAO;
 import edu.mcw.rgd.datamodel.Chromosome;
-import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.datamodel.Sample;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.process.Utils;
 
-import edu.mcw.rgd.services.ClientInit;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
+import edu.mcw.rgd.variantIndexerRgd.newtablestructure.BulkIndexProcessor;
 import edu.mcw.rgd.variantIndexerRgd.process.GeneCache;
 import edu.mcw.rgd.variantIndexerRgd.process.Zygosity;
-import org.elasticsearch.action.bulk.*;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
-import org.elasticsearch.xcontent.XContentType;
-
 
 import java.math.BigDecimal;
-import java.net.UnknownHostException;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 import static edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3.geneLociMap;
 
@@ -49,43 +37,9 @@ public class VariantHumanIndexer implements Runnable {
     }
     @Override
     public void run() {
-        BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-            @Override
-            public void beforeBulk(long executionId, BulkRequest request) {
-                //        System.out.println("ACTIONS: "+request.numberOfActions());
-            }
+        BulkIngester<Void> bulkProcessor = BulkIndexProcessor.newIngester(1);
 
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  BulkResponse response) {
-                //     System.out.println("in process...");
-            }
-
-            @Override
-            public void afterBulk(long executionId, BulkRequest request,
-                                  Throwable failure) {
-
-            }
-        };
-        BulkProcessor bulkProcessor = BulkProcessor.builder(
-                (request, bulkListener) ->
-                {
-                    try {
-                        ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                    } catch (UnknownHostException e) {
-                        throw new RuntimeException(e);
-                    }
-                },
-                listener)
-                .setBulkActions(10000)
-                .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                .setFlushInterval(TimeValue.timeValueSeconds(5))
-                .setConcurrentRequests(1)
-                .setBackoffPolicy(
-                        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                .build();
-
-
+        try {
 
         for(String line: lines) {
             String[] v = line.split("[\\t]", -1);
@@ -293,13 +247,7 @@ public class VariantHumanIndexer implements Runnable {
                             vi.setVariantTranscripts(variantTranscripts);
                         vi.setMapKey(17);
 
-                        try {
-                            ObjectMapper mapper=new ObjectMapper();
-                            String json =  mapper.writeValueAsString(vi);
-                            bulkProcessor.add(new IndexRequest(RgdIndex.getNewAlias()).source(json, XContentType.JSON));
-                        } catch (JsonProcessingException e) {
-                            e.printStackTrace();
-                        }
+                        bulkProcessor.add(BulkIndexProcessor.indexOp(vi));
                     }
                 }
 
@@ -308,12 +256,7 @@ public class VariantHumanIndexer implements Runnable {
                 e.printStackTrace();
             }
         }
-        try {
-            bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-            bulkProcessor.close();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
+        } finally {
             bulkProcessor.close();
         }
         System.out.println("***********"+Thread.currentThread().getName()+ "\tLINE_COUNT:"+lineCount + "\tEND ...."+"\t"+ new Date()+"*********");
