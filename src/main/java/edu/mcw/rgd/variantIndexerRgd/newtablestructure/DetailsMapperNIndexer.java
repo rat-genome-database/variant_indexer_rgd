@@ -10,11 +10,9 @@ import edu.mcw.rgd.datamodel.variants.VariantObject;
 import edu.mcw.rgd.datamodel.variants.VariantSampleDetail;
 import edu.mcw.rgd.datamodel.variants.VariantTranscript;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantDao;
-import edu.mcw.rgd.variantIndexerRgd.model.Json;
-import edu.mcw.rgd.variantIndexerRgd.model.RgdIndex;
+
 import edu.mcw.rgd.variantIndexerRgd.model.VariantIndex;
 import edu.mcw.rgd.variantIndexerRgd.process.MyThreadPoolExecutor;
-import org.elasticsearch.action.index.IndexRequest;
 
 import java.util.ArrayList;
 import java.util.List;

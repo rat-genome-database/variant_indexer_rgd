@@ -5,8 +5,7 @@ import edu.mcw.rgd.dao.impl.SequenceDAO;
 import edu.mcw.rgd.datamodel.Sequence;
 import edu.mcw.rgd.variantIndexerRgd.dao.VariantLoad3;
 import edu.mcw.rgd.variantIndexerRgd.model.VariantTranscript;
-import org.springframework.beans.factory.xml.XmlBeanFactory;
-import org.springframework.core.io.FileSystemResource;
+
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;

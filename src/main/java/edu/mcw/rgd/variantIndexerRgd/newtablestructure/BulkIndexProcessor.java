@@ -1,20 +1,23 @@
 package edu.mcw.rgd.variantIndexerRgd.newtablestructure;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkIngester;
+import co.elastic.clients.elasticsearch._helpers.bulk.BulkListener;
+import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import co.elastic.clients.util.BinaryData;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import edu.mcw.rgd.datamodel.RgdIndex;
 import edu.mcw.rgd.services.ClientInit;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkProcessor;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
-import org.elasticsearch.core.TimeValue;
+import edu.mcw.rgd.variantIndexerRgd.model.Json;
 
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class BulkIndexProcessor {
-    public static BulkProcessor bulkProcessor=null;
+    public static BulkIngester<Void> bulkProcessor=null;
     private static BulkIndexProcessor bulkIndexProcessor=null;
     private BulkIndexProcessor(){}
     public static BulkIndexProcessor getInstance(){
@@ -24,65 +27,92 @@ public class BulkIndexProcessor {
         }
         return bulkIndexProcessor;
     }
+    public static BulkIngester<Void> getBulkProcessor(){
+        return bulkProcessor;
+    }
 
-    private static BulkProcessor init() {
+    private static BulkIngester<Void> init() {
 
             System.out.println("CREATING NEW BULK PROCESSOR....");
-            BulkProcessor.Listener listener = new BulkProcessor.Listener() {
+            BulkListener<Void> listener = new BulkListener<>() {
                 @Override
-                public void beforeBulk(long executionId, BulkRequest request) {
-                    //        System.out.println("ACTIONS: "+request.numberOfActions());
+                public void beforeBulk(long executionId, BulkRequest request, List<Void> contexts) {
+                    //        System.out.println("ACTIONS: "+request.operations().size());
                 }
 
                 @Override
-                public void afterBulk(long executionId, BulkRequest request,
-                                      BulkResponse response) {
+                public void afterBulk(long executionId, BulkRequest request, List<Void> contexts, BulkResponse response) {
                     //     System.out.println("in process...");
                 }
 
                 @Override
-                public void afterBulk(long executionId, BulkRequest request,
-                                      Throwable failure) {
+                public void afterBulk(long executionId, BulkRequest request, List<Void> contexts, Throwable failure) {
 
                 }
             };
-           return BulkProcessor.builder(
-                    (request, bulkListener) ->
-                    {
-                        try {
-                            ClientInit.getClient().bulkAsync(request, RequestOptions.DEFAULT, bulkListener);
-                        } catch (UnknownHostException e) {
-                            throw new RuntimeException(e);
-                        }
-                    },
-                    listener)
-                    .setBulkActions(10000)
-                    .setBulkSize(new ByteSizeValue(5, ByteSizeUnit.MB))
-                    .setFlushInterval(TimeValue.timeValueSeconds(5))
-                    .setConcurrentRequests(10)
-                    .setBackoffPolicy(
-                            BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), 3))
-                    .build();
+            ElasticsearchClient esClient;
+            try {
+                esClient = ClientInit.getClient();
+            } catch (UnknownHostException e) {
+                throw new RuntimeException(e);
+            }
+            return BulkIngester.of(b -> b
+                    .client(esClient)
+                    .maxOperations(10000)
+                    .maxSize(5L * 1024 * 1024)
+                    .flushInterval(5, TimeUnit.SECONDS)
+                    .maxConcurrentRequests(10)
+                    .listener(listener));
 
 
     }
-    public  void destroy(){
-        try {
-            if(this.bulkProcessor!=null) {
-                bulkProcessor.flush();
-                bulkProcessor.awaitClose(10, TimeUnit.MINUTES);
-                bulkProcessor=null;
-                bulkIndexProcessor=null;
 
-            }
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
-            if(bulkProcessor!=null) {
-                bulkProcessor.flush();
+    /**
+     * Build a bulk index operation for the given document against the current new alias.
+     * The document is serialized to JSON eagerly (so that callers may safely reuse/mutate
+     * the source object after adding the operation) and sent as raw JSON via {@link BinaryData}.
+     */
+    public static BulkOperation indexOp(Object document){
+        byte[] json;
+        try {
+            json = Json.serializer().mapper().writeValueAsBytes(document);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        BinaryData data = BinaryData.of(json, "application/json");
+        return BulkOperation.of(b -> b.index(i -> i
+                .index(RgdIndex.getNewAlias())
+                .document(data)));
+    }
+
+    /** Index a document through the shared bulk ingester. */
+    public static void index(Object document){
+        bulkProcessor.add(indexOp(document));
+    }
+
+    /** Create a standalone bulk ingester (used by one-off indexing tasks that manage their own lifecycle). */
+    public static BulkIngester<Void> newIngester(int concurrentRequests){
+        ElasticsearchClient esClient;
+        try {
+            esClient = ClientInit.getClient();
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+        return BulkIngester.of(b -> b
+                .client(esClient)
+                .maxOperations(10000)
+                .maxSize(5L * 1024 * 1024)
+                .flushInterval(5, TimeUnit.SECONDS)
+                .maxConcurrentRequests(concurrentRequests));
+    }
+
+    public  void destroy(){
+        if(bulkProcessor!=null) {
+            try {
                 bulkProcessor.close();
-                bulkProcessor=null;
-                bulkIndexProcessor=null;
+            } finally {
+                bulkProcessor = null;
+                bulkIndexProcessor = null;
             }
         }
     }
